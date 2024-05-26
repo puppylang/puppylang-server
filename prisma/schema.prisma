@@ -1,0 +1,198 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Post {
+  id                      Int                   @id @default(autoincrement())
+  title                   String                @db.VarChar(50)
+  content                 String                @db.VarChar(300)
+  start_at                DateTime
+  end_at                  DateTime
+  status                  String                @default("IN_PROGRESS") @db.VarChar(30)
+  created_at              DateTime              @default(now())
+  updated_at              DateTime              @default(now())
+  author_id               String
+  pet_id                  Int
+  proposed_fee            Float                 @default(0)
+  preferred_walk_location String                @db.VarChar(50)
+  cautions                Caution[]
+  chat                    Chat[]
+  like                    Like[]
+  pet_sitter_walk_record  PetSitterWalkRecord[]
+  author                  User                  @relation(fields: [author_id], references: [id], onDelete: Cascade)
+  pet                     Pet                   @relation(fields: [pet_id], references: [id], onDelete: Cascade)
+  postView                PostView[]
+  resume                  Resume[]
+}
+
+model PostView {
+  id        Int    @id @default(autoincrement())
+  author_id String
+  post_id   Int
+  author    User   @relation(fields: [author_id], references: [id], onDelete: Cascade)
+  post      Post   @relation(fields: [post_id], references: [id], onDelete: Cascade)
+}
+
+model User {
+  id                      String                @id
+  name                    String                @unique @db.VarChar(20)
+  image                   String?
+  created_at              DateTime              @default(now())
+  updated_at              DateTime?             @updatedAt
+  logged_from             LoggedFrom
+  birthday                String?
+  character               String?
+  gender                  Gender?
+  region                  String[]              @default([])
+  chat                    Chat[]
+  Like                    Like[]
+  message                 Message[]
+  pet                     Pet[]
+  pet_sitter_walk_records PetSitterWalkRecord[]
+  pet_walk_records        PetWalkRecord[]
+  post                    Post[]
+  PostView                PostView[]
+  resume                  Resume[]
+  token                   Token?
+}
+
+model Caution {
+  id           Int      @id @default(autoincrement())
+  content      String   @db.VarChar(50)
+  created_at   DateTime @default(now())
+  updated_at   DateTime @default(now())
+  post_id      Int
+  is_completed Boolean  @default(false)
+  post         Post     @relation(fields: [post_id], references: [id], onDelete: Cascade)
+}
+
+model Pet {
+  id                      Int                   @id @default(autoincrement())
+  name                    String                @db.VarChar(10)
+  weight                  Int
+  breed                   String
+  birthday                String                @db.VarChar(10)
+  character               String?
+  created_at              DateTime              @default(now())
+  gender                  Gender?
+  image                   String?
+  is_newtralize           Boolean?
+  updated_at              DateTime              @default(now())
+  user_id                 String
+  user                    User                  @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  pet_sitter_walk_records PetSitterWalkRecord[]
+  pet_walks_records       PetWalkRecord[]
+  post                    Post[]
+}
+
+model Token {
+  id                  Int    @id @default(autoincrement())
+  user_id             String @unique
+  refresh_token       String @unique
+  social_access_token String @unique
+  user                User   @relation(fields: [user_id], references: [id], onDelete: Cascade)
+}
+
+model Like {
+  id        Int    @id @default(autoincrement())
+  author_id String
+  post_id   Int
+  author    User   @relation(fields: [author_id], references: [id], onDelete: Cascade)
+  post      Post   @relation(fields: [post_id], references: [id], onDelete: Cascade)
+}
+
+model Chat {
+  id          Int       @id @default(autoincrement())
+  post_id     Int
+  guest_id    String
+  author_id   String
+  guest_image String?
+  user        User      @relation(fields: [author_id], references: [id], onDelete: Cascade)
+  post        Post      @relation(fields: [post_id], references: [id], onDelete: Cascade)
+  message     Message[]
+}
+
+model Message {
+  id         Int      @id @default(autoincrement())
+  chat_id    Int
+  user_id    String
+  time       DateTime
+  text       String
+  is_read    Boolean  @default(false)
+  user_image String?
+  chat       Chat     @relation(fields: [chat_id], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+}
+
+model Location {
+  id                 Int                  @id @default(autoincrement())
+  latitude           Decimal
+  longitude          Decimal
+  recorded_at        DateTime
+  pet_sitter_walk_id Int?
+  pet_walk_id        Int?
+  pet_sitter_walk    PetSitterWalkRecord? @relation(fields: [pet_sitter_walk_id], references: [id], onDelete: Cascade)
+  pet_walk_record    PetWalkRecord?       @relation(fields: [pet_walk_id], references: [id], onDelete: Cascade)
+}
+
+model PetWalkRecord {
+  id         Int        @id @default(autoincrement())
+  start_at   DateTime
+  end_at     DateTime
+  distance   Float
+  pet_id     Int
+  user_id    String
+  created_at DateTime   @default(now())
+  locations  Location[]
+  pet        Pet        @relation(fields: [pet_id], references: [id], onDelete: Cascade)
+  user       User       @relation(fields: [user_id], references: [id], onDelete: Cascade)
+}
+
+model PetSitterWalkRecord {
+  id         Int        @id @default(autoincrement())
+  start_at   DateTime
+  end_at     DateTime
+  distance   Float
+  pet_id     Int
+  post_id    Int
+  user_id    String
+  created_at DateTime   @default(now())
+  locations  Location[]
+  pet        Pet        @relation(fields: [pet_id], references: [id], onDelete: Cascade)
+  post       Post       @relation(fields: [post_id], references: [id], onDelete: Cascade)
+  user       User       @relation(fields: [user_id], references: [id], onDelete: Cascade)
+}
+
+model Resume {
+  id           Int      @id @default(autoincrement())
+  image        String?
+  gender       Gender?
+  name         String?
+  birth_year   String
+  introduction String
+  post_id      Int
+  user_id      String
+  has_puppy    Boolean?
+  phone_number String
+  created_at   DateTime @default(now())
+  is_checked   Boolean  @default(false)
+  is_selected  Boolean  @default(false)
+  post         Post     @relation(fields: [post_id], references: [id], onDelete: Cascade)
+  user         User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+}
+
+enum LoggedFrom {
+  KAKAO
+  NAVER
+  APPLE
+}
+
+enum Gender {
+  Male
+  Female
+}
