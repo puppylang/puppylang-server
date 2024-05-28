@@ -48,8 +48,6 @@ class Resume {
       }
       const { postId } = request.query;
 
-      // 현재 유저가 해당 글을 작성했는지 체크해야됨.
-
       const resumes = await prisma.resume.findMany({
         where: { post_id: Number(postId) },
       });
