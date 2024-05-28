@@ -7,4 +7,5 @@ const walk = new Elysia()
   .get("/record-walks", Walk.getRecordWalks)
   .get("/record-walks/:id", Walk.getDetailRecordWalk)
   .get("/record-walks/user", Walk.getRecordWalkByUser);
+
 export default walk;

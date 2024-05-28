@@ -46,7 +46,13 @@ class Chat {
           },
         },
         post: {
-          select: { title: true, pet: true },
+          select: { title: true, pet: true, preferred_walk_location: true },
+        },
+        guest: {
+          select: {
+            name: true,
+            image: true,
+          },
         },
         message: {
           select: {
