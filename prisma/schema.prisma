@@ -180,6 +180,7 @@ model Resume {
   has_puppy    Boolean?
   phone_number String
   created_at   DateTime @default(now())
+  has_walk_recrod Boolean 
   is_checked   Boolean  @default(false)
   is_selected  Boolean  @default(false)
   post         Post     @relation(fields: [post_id], references: [id], onDelete: Cascade)
