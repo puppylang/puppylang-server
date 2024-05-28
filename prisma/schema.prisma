@@ -49,7 +49,6 @@ model User {
   character               String?
   gender                  Gender?
   region                  String[]              @default([])
-  chat                    Chat[]
   Like                    Like[]
   message                 Message[]
   pet                     Pet[]
@@ -59,6 +58,8 @@ model User {
   PostView                PostView[]
   resume                  Resume[]
   token                   Token?
+  author_chat            Chat[]  @relation("AuthorChat")
+  guest_chat             Chat[]  @relation("GuestChat")
 }
 
 model Caution {
@@ -112,7 +113,9 @@ model Chat {
   guest_id    String
   author_id   String
   guest_image String?
-  user        User      @relation(fields: [author_id], references: [id], onDelete: Cascade)
+
+  guest      User   @relation("GuestChat",fields: [guest_id], references: [id], onDelete: Cascade)
+  user        User      @relation("AuthorChat",fields: [author_id], references: [id], onDelete: Cascade)
   post        Post      @relation(fields: [post_id], references: [id], onDelete: Cascade)
   message     Message[]
 }
@@ -180,7 +183,7 @@ model Resume {
   has_puppy    Boolean?
   phone_number String
   created_at   DateTime @default(now())
-  has_walk_recrod Boolean 
+  has_walk_record Boolean @default(false) 
   is_checked   Boolean  @default(false)
   is_selected  Boolean  @default(false)
   post         Post     @relation(fields: [post_id], references: [id], onDelete: Cascade)
