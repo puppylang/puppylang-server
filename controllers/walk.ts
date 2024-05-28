@@ -234,4 +234,60 @@ export default class Walk {
       console.log(err);
     }
   }
+
+  static async getRecordWalkByUser(
+    request: CustomRequest<
+      RecordWalkRoleQuery & { user_id: string; limit: string }
+    >
+  ) {
+    const token = request.headers.authorization;
+    if (!token) {
+      return CustomError({
+        message: "산책 일지는 로그인 후 확인 가능합니다.",
+        status: 401,
+      });
+    }
+
+    if (
+      !request.query ||
+      !request.query.user_id ||
+      !request.query.role ||
+      !request.query.limit
+    ) {
+      return CustomError({
+        message: "Invalid request: Missing required query parameters.",
+        status: 400,
+      });
+    }
+
+    const { user_id, role, limit } = request.query;
+
+    if (role === WalkRole.PetOwner) {
+      const recordedPetWalks = await prisma.petWalkRecord.findMany({
+        take: Number(limit),
+        where: {
+          user_id,
+        },
+        include: { locations: true, pet: true },
+        orderBy: {
+          id: "desc",
+        },
+      });
+
+      return recordedPetWalks;
+    }
+
+    const recordedPetSitterWalks = await prisma.petSitterWalkRecord.findMany({
+      take: Number(limit),
+      where: {
+        user_id,
+      },
+      include: { locations: true, pet: true },
+      orderBy: {
+        id: "desc",
+      },
+    });
+
+    return recordedPetSitterWalks;
+  }
 }
