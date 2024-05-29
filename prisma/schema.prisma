@@ -48,7 +48,8 @@ model User {
   birthday                String?
   character               String?
   gender                  Gender?
-  region                  String[]              @default([])
+  actived_region          String?
+  region                 String[]              @default([])
   Like                    Like[]
   message                 Message[]
   pet                     Pet[]
