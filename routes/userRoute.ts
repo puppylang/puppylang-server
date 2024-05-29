@@ -27,6 +27,6 @@ const user = new Elysia({ prefix: "/user" })
 
   .post("/region", Region.createRegion)
   .delete("/region", Region.deleteRegion)
-  .get("/region", Region.getRegions);
+  .patch("/actived-region", Region.updateUserActivedRegion);
 
 export default user;
