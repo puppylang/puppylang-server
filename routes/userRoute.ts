@@ -21,8 +21,9 @@ const user = new Elysia({ prefix: "/user" })
 
   .get("/posts", User.getUserPosts)
   .get("/liked-posts", User.getUserLikedPosts)
-  .get("/:user_id/record-walks/count", User.getUserRecordWalksCount)
-  .get("/:user_id/record-walks/distance", User.getUserRecordWalksDistance)
+
+  .get("/record-walks/count", User.getUserRecordWalksCount)
+  .get("/record-walks/distance", User.getUserRecordWalksDistance)
   .get("/:user_id/record-walks", User.getUserRecordWalks)
 
   .post("/region", Region.createRegion)

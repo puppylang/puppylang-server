@@ -52,3 +52,7 @@ export interface UserUpdateReqType {
   character: string | null;
   birthday: string;
 }
+
+export interface ReadUserWalkReqType {
+  user_id: string;
+}
