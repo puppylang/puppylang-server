@@ -5,6 +5,7 @@ import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
 import type {
   DatabaseErrorType,
   NaverLoginReqType,
+  ReadUserWalkReqType,
   SocialLoginReqType,
   UserUpdateReqType,
 } from "../types/userType";
@@ -402,7 +403,9 @@ class User {
   }
 
   // 유저가 등록한 반려견으로 산책한 총 횟수
-  static async getUserRecordWalksCount(request: CustomRequest<Params>) {
+  static async getUserRecordWalksCount(
+    request: CustomRequest<ReadUserWalkReqType>
+  ) {
     try {
       const token = request.headers.authorization;
       if (!token) {
@@ -421,27 +424,30 @@ class User {
       }
       // E: 로그인 정보 //
 
-      if (!request.params?.user_id) {
-        return CustomError({
-          message: "Invalid request. Missing required user_id parameters.",
-          status: 400,
+      if (!request.query?.user_id) {
+        const count = await prisma.petWalkRecord.count({
+          where: { user_id: user.id },
         });
+
+        return count;
       }
 
-      const { user_id } = request.params;
+      const { user_id } = request.query;
 
       const count = await prisma.petWalkRecord.count({
         where: { user_id },
       });
 
-      return new Response(JSON.stringify({ count }));
+      return count;
     } catch (err) {
       console.log(err);
     }
   }
 
   // 유저가 등록한 반려견으로 산책한 총 거리
-  static async getUserRecordWalksDistance(request: CustomRequest<Params>) {
+  static async getUserRecordWalksDistance(
+    request: CustomRequest<ReadUserWalkReqType>
+  ) {
     try {
       const token = request.headers.authorization;
       if (!token) {
@@ -460,18 +466,19 @@ class User {
       }
       // E: 로그인 정보 //
 
-      if (!request.params?.user_id) {
-        return CustomError({
-          message: "Invalid request. Missing required user_id parameters.",
-          status: 400,
+      let distanceData = [];
+      if (!request.query?.user_id) {
+        distanceData = await prisma.petWalkRecord.findMany({
+          where: { user_id: user.id },
+          select: { distance: true },
+        });
+      } else {
+        const { user_id } = request.query;
+        distanceData = await prisma.petWalkRecord.findMany({
+          where: { user_id },
+          select: { distance: true },
         });
       }
-
-      const { user_id } = request.params;
-      const distanceData = await prisma.petWalkRecord.findMany({
-        where: { user_id },
-        select: { distance: true },
-      });
 
       const filteredDistance = distanceData.filter(({ distance }) => distance);
       const totalDistance = filteredDistance.reduce(
@@ -479,7 +486,7 @@ class User {
         0
       );
 
-      return new Response(JSON.stringify({ total_distance: totalDistance }));
+      return { total_distance: totalDistance };
     } catch (err) {
       console.log(err);
     }
