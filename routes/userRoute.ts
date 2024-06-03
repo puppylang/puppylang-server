@@ -6,6 +6,7 @@ import Region from "../controllers/region";
 const user = new Elysia({ prefix: "/user" })
   .post("/login-kakao", User.getKakaoUser)
   .post("/login-naver", User.getNaverUser)
+  .post("/login-apple", User.getAppleUser)
   .guard(
     {
       beforeHandle(context) {
@@ -16,7 +17,7 @@ const user = new Elysia({ prefix: "/user" })
   )
   .patch("", User.updateUser)
   .get("/name", User.validateUserName)
-  .get("/logout", User.logoutUser)
+  .post("/logout", User.logoutUser)
   .delete("", User.deleteUser)
 
   .get("/posts", User.getUserPosts)

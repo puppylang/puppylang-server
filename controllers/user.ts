@@ -10,6 +10,8 @@ import type {
   UserUpdateReqType,
 } from "../types/userType";
 import {
+  deleteAppleUser,
+  getAppleUserInfo,
   getKakaoToken,
   getKakaoUserInfo,
   getNaverUserInfo,
@@ -26,6 +28,44 @@ import { CustomError } from "../utils/CustomError";
 const prisma = new PrismaClient({});
 
 class User {
+  static async getAppleUser(
+    request: CustomRequest<SocialLoginReqType & { token: string }>
+  ) {
+    if (!request.body || !request.body.code || !request.body.token) {
+      return CustomError({ status: 401, message: "body가 존재하지 않습니다." });
+    }
+
+    const { code, token } = request.body;
+    const refreshToken = await getAppleUserInfo(code);
+
+    const { sub: id } = jwt.decode(token) as { sub: string };
+    const user = await User.readUserInfo(id, id.slice(0, 10), LoggedFrom.APPLE);
+    if (!user) return;
+
+    const jwtAccessToken = createToken(user.id);
+    const jwtRefreshToken = createToken(user.id, "refresh");
+
+    await User.saveRefreshToken(
+      jwtRefreshToken,
+      user.id,
+      refreshToken as string
+    );
+
+    const response = new Response(
+      JSON.stringify({
+        token: jwtAccessToken,
+        is_first_login: user.is_first_login,
+      })
+    );
+
+    response.headers.append(
+      "Set-Cookie",
+      `token=${jwtAccessToken};Secure; Path=/`
+    );
+
+    return response;
+  }
+
   static async getKakaoUser(request: CustomRequest<SocialLoginReqType>) {
     try {
       const { code } = request.body;
@@ -155,13 +195,33 @@ class User {
     }
   }
 
-  static async deleteUser(request: CustomRequest<{ id: string }>) {
+  static async deleteUser(
+    request: CustomRequest<{ user_id: string; logged_from: LoggedFrom }>
+  ) {
     try {
-      const { id } = request.body;
+      if (!request.body.user_id || !request.body.logged_from) {
+        return CustomError({
+          status: 401,
+          message: "데이터값이 유효하지 않습니다.",
+        });
+      }
+
+      const { user_id, logged_from } = request.body;
+
+      const token = await prisma.token.findUnique({
+        where: {
+          user_id,
+        },
+      });
+
+      if (logged_from === "APPLE" && token?.social_access_token) {
+        const { social_access_token } = token;
+        await deleteAppleUser(social_access_token);
+      }
 
       const deletedUser = await prisma.user.delete({
         where: {
-          id,
+          id: user_id,
         },
       });
 
@@ -274,29 +334,37 @@ class User {
     return user ? currentUser.id !== user.id : false;
   }
 
-  static async logoutUser(request: CustomRequest<string>) {
-    const token = request.headers.authorization;
-    if (!token) return;
-    const user = await User.getUserInfo(token);
-    if (!user) return;
+  static async logoutUser(
+    request: CustomRequest<{ user_id: string; logged_from: LoggedFrom }>
+  ) {
+    if (!request.body.user_id || !request.body.logged_from) {
+      return CustomError({
+        status: 401,
+        message: "데이터값이 유효하지 않습니다.",
+      });
+    }
+    const { user_id, logged_from } = request.body;
+
     const refreshToken = await prisma.token.findUnique({
       where: {
-        user_id: user.id,
+        user_id: user_id,
       },
     });
-    if (!refreshToken) return;
+    if (!refreshToken) {
+      return CustomError({
+        status: 401,
+        message: "이미 로그아웃한 유저입니다.",
+      });
+    }
 
-    const { social_access_token } = refreshToken;
-    const expiredSocialToken = await removeSocialAccessToken(
-      social_access_token,
-      user.logged_from
-    );
-
-    if (!expiredSocialToken) return;
+    if (logged_from !== LoggedFrom.APPLE) {
+      const { social_access_token } = refreshToken;
+      await removeSocialAccessToken(social_access_token, logged_from);
+    }
 
     const deletedToken = await prisma.token.delete({
       where: {
-        user_id: user.id,
+        user_id,
       },
     });
 
