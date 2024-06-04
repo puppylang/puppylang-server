@@ -22,7 +22,23 @@ interface RawQueryCount {
 export default class Pet {
   static async createPet(request: CustomRequest<CreatePetFormReqType>) {
     try {
+      const token = request.headers.authorization;
+      if (!token) return;
+      const user = await User.getUserInfo(token);
+      if (!user) return;
+      const result: RawQueryCount[] =
+        await prisma.$queryRaw`SELECT COUNT(*) FROM "Pet" WHERE user_id = ${user.id}`;
+
+      const resultCount = Number(result[0].count);
+      if (resultCount >= 3) {
+        return CustomError({
+          status: 400,
+          message: "최대 2개의 펫을 만들 수 있습니다.",
+        });
+      }
+
       const newPet = await prisma.pet.create({ data: request.body });
+
       if (newPet && request.set) {
         request.set.status = 201;
       }
@@ -51,16 +67,6 @@ export default class Pet {
         const pets = await prisma.pet.findMany({ where: { user_id } });
 
         return pets;
-      }
-
-      const result: RawQueryCount[] =
-        await prisma.$queryRaw`SELECT COUNT(*) FROM "Pet" WHERE user_id = ${user.id}`;
-      const resultCount = Number(result[0].count);
-      if (resultCount >= 3) {
-        return CustomError({
-          status: 400,
-          message: "최대 2개의 펫을 만들 수 있습니다.",
-        });
       }
 
       const pets = await prisma.pet.findMany({
