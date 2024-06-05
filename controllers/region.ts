@@ -31,15 +31,6 @@ class Region {
     }
   }
 
-  static async getRegions(request: CustomRequest<string>) {
-    const token = request.headers.authorization;
-    if (!token) return;
-    const user = await User.getUserInfo(token);
-    if (!user) return;
-
-    return user.region;
-  }
-
   static async createRegion(request: CustomRequest<{ region: string }>) {
     const token = request.headers.authorization;
     if (!token) return;
@@ -88,11 +79,55 @@ class Region {
       },
       data: {
         region: filteredUserRegions,
+        actived_region:
+          region === user.actived_region ? null : user.actived_region,
       },
     });
 
     if (deletedUserRegion) {
       request.set.status = 200;
+    }
+  }
+
+  static async updateUserActivedRegion(
+    request: CustomRequest<{ region: string }>
+  ) {
+    const token = request.headers.authorization;
+    if (!token) {
+      return CustomError({
+        message: "로그인 후 확인 가능합니다.",
+        status: 401,
+      });
+    }
+
+    const user = await User.getUserInfo(token);
+    if (!user) {
+      return CustomError({
+        message: "가입되어 있지 않은 사용자입니다.",
+        status: 401,
+      });
+    }
+
+    if (!request.body || !request.body.region) {
+      return CustomError({
+        message: "데이터가 존재하지 않습니다.",
+        status: 401,
+      });
+    }
+
+    const { region } = request.body;
+
+    const updatedUser = await prisma.user.update({
+      where: {
+        id: user.id,
+      },
+      data: {
+        actived_region: region,
+      },
+    });
+
+    if (updatedUser && request.set) {
+      request.set.status = 201;
     }
   }
 }

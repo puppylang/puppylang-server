@@ -1,6 +1,8 @@
+import jwt from "jsonwebtoken";
 import { LoggedFrom } from "@prisma/client";
 
 import type {
+  AppleUserInfo,
   KakaoTokenType,
   KakaoUserInfoType,
   NaverUserInfoType,
@@ -79,4 +81,71 @@ export const removeSocialAccessToken = async (
 
     return data;
   }
+};
+
+export const createSignWithAppleSecret = () => {
+  const key = `-----BEGIN PRIVATE KEY-----\n${process.env.APPLE_SECRET_KEY}\n-----END PRIVATE KEY-----\n`;
+  const issuedAt = new Date().getTime() / 1000;
+  const expireTime = issuedAt + 60 * 60 * 24 * 30 * 6;
+
+  const token = jwt.sign(
+    {
+      iss: process.env.APPLE_TEAM_ID,
+      iat: issuedAt,
+      exp: expireTime,
+      aud: "https://appleid.apple.com",
+      sub: process.env.APPLE_CLIENT_ID,
+    },
+    key,
+    {
+      algorithm: "ES256",
+      keyid: process.env.APPLE_KEY_ID,
+    }
+  );
+
+  return token;
+};
+
+export const getAppleUserInfo = async (code: string) => {
+  try {
+    const bodyData = new URLSearchParams({
+      grant_type: "authorization_code",
+      code,
+      client_secret: createSignWithAppleSecret(),
+      client_id: process.env.APPLE_CLIENT_ID as string,
+      redirect_uri: process.env.APPLE_REDIRECT_URI as string,
+    }).toString();
+
+    const response = await fetch("https://appleid.apple.com/auth/token", {
+      method: "POST",
+      body: bodyData,
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+    });
+
+    const { refresh_token } = (await response.json()) as AppleUserInfo;
+
+    return refresh_token;
+  } catch (err) {
+    console.error(err);
+  }
+};
+
+export const deleteAppleUser = async (token: string) => {
+  const URL = "https://appleid.apple.com/auth/revoke";
+  const bodyData = new URLSearchParams({
+    client_id: process.env.APPLE_CLIENT_ID as string,
+    client_secret: createSignWithAppleSecret(),
+    token,
+    token_type: "refresh_token",
+  }).toString();
+
+  await fetch(URL, {
+    method: "POST",
+    headers: {
+      "Content-type": "application/x-www-form-urlencoded",
+    },
+    body: bodyData,
+  });
 };
