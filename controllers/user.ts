@@ -60,7 +60,7 @@ class User {
 
     response.headers.append(
       "Set-Cookie",
-      `token=${jwtAccessToken};Secure; Path=/`
+      `token=${jwtAccessToken};Secure; Path=/;SameSite=None;`
     );
 
     return response;
@@ -97,7 +97,7 @@ class User {
       );
       response.headers.append(
         "Set-Cookie",
-        `token=${jwtAccessToken};Secure; Path=/`
+        `token=${jwtAccessToken};Secure; Path=/; SameSite=None;`
       );
 
       return response;
@@ -187,7 +187,10 @@ class User {
         })
       );
 
-      response.headers.append("Set-Cookie", `token=${jwtAccessToken};Path=/`);
+      response.headers.append(
+        "Set-Cookie",
+        `token=${jwtAccessToken};Secure; Path=/; SameSite=None;`
+      );
 
       return response;
     } catch (err) {

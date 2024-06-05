@@ -15,6 +15,7 @@ import resumse from "./routes/resumeRoute";
 new Elysia()
   .use(
     cors({
+      origin: ["http://localhost:3000", "https://puppylang.netlify.app"],
       methods: ["GET", "PUT", "POST", "DELETE", "PATCH"],
       allowedHeaders: ["Content-Type", "Authorization", "WithCredentials"],
     })
