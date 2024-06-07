@@ -58,11 +58,6 @@ class User {
       })
     );
 
-    response.headers.append(
-      "Set-Cookie",
-      `token=${jwtAccessToken};Secure; Path=/;SameSite=None;`
-    );
-
     return response;
   }
 
@@ -94,10 +89,6 @@ class User {
           token: jwtAccessToken,
           is_first_login: user.is_first_login,
         })
-      );
-      response.headers.append(
-        "Set-Cookie",
-        `token=${jwtAccessToken};Secure; Path=/; SameSite=None;`
       );
 
       return response;
@@ -185,11 +176,6 @@ class User {
           token: jwtAccessToken,
           is_first_login: user.is_first_login,
         })
-      );
-
-      response.headers.append(
-        "Set-Cookie",
-        `token=${jwtAccessToken};Secure; Path=/; SameSite=None;`
       );
 
       return response;
