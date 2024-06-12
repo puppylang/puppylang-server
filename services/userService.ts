@@ -1,6 +1,5 @@
 import jwt from "jsonwebtoken";
 import { LoggedFrom } from "@prisma/client";
-import { HttpProxyAgent } from "hpagent";
 
 import type {
   AppleUserInfo,
@@ -34,10 +33,6 @@ export const getKakaoUserInfo = async (
 ): Promise<KakaoUserInfoType> => {
   const URL = "https://kapi.kakao.com/v2/user/me";
   const response = await fetch(URL, {
-    agent: new HttpProxyAgent({
-      keepAlive: true,
-      proxy: (process.env.NOBLE_PROXY_END_POINT as string) || "",
-    }),
     headers: {
       Authorization: `Bearer ${token}`,
     },
