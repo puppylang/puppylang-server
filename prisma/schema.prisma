@@ -28,6 +28,7 @@ model Post {
   pet                     Pet                   @relation(fields: [pet_id], references: [id], onDelete: Cascade)
   postView                PostView[]
   resume                  Resume[]
+  matched_user_id         String?              
 }
 
 model PostView {
