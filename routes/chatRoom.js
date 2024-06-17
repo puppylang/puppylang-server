@@ -37,15 +37,16 @@ const readMessage = async (messageId, chatId, userId) => {
   });
 };
 
-const chat = new Elysia({ prefix: "/chat" }) //
-  .get("", Chat.getChattings)
-  .post("", Chat.createChatRoom)
-  .get("/message/:id", Chat.getMessages)
-  .get("/post/:id", Chat.getDetailPostPet)
-  .get("/message/:id", Chat.getMessages)
-  .patch("/message/read", Chat.updateReadMessage)
-  // .get("/sse", Chat.getNotReadedMessage)
-  .ws("/ws", {
+const chat = new Elysia() //
+  .get("/chats", Chat.getChattings)
+  .get("/chat", Chat.getChattingDetail)
+  .post("/chat", Chat.createChatRoom)
+  .get("/chat/message/:id", Chat.getMessages)
+  .get("/chat/post/:id", Chat.getDetailPostPet)
+  .get("/chat/message/:id", Chat.getMessages)
+  .patch("/chat/message/read", Chat.updateReadMessage)
+  .get("/chat/sse", Chat.getNotReadedMessage)
+  .ws("/chat/ws", {
     open() {
       console.log("socket sever open!");
     },
