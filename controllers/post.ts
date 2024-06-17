@@ -2,7 +2,11 @@ import { PrismaClient, type Caution } from "@prisma/client";
 import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
 
 import { CustomError } from "../utils/CustomError";
-import { StatusType, type PostFormType } from "../types/postType";
+import {
+  StatusType,
+  type PostFormType,
+  type PostQuery,
+} from "../types/postType";
 import {
   type CustomRequest,
   type PageQuery,
@@ -566,11 +570,11 @@ class Post {
     }
   }
 
-  static async getMatchedPosts(request: CustomRequest<Params>) {
+  static async getMatchedPosts(request: CustomRequest<PostQuery>) {
     try {
-      if (!request.params) return;
+      if (!request.query) return;
 
-      const { user_id } = request.params;
+      const { user_id } = request.query;
       if (!user_id) {
         return CustomError({
           message: "Invalid request. User ID is missing.",

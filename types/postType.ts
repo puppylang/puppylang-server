@@ -39,7 +39,8 @@ export interface Author {
   is_first_login: boolean;
 }
 
-export interface PostParam {
+export interface PostQuery {
   status?: StatusType;
   author_id?: string;
+  user_id?: string;
 }
