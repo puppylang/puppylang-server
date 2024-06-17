@@ -284,6 +284,9 @@ class User {
       where: {
         id,
       },
+      include: {
+        blocker: true,
+      },
     });
 
     return user;
