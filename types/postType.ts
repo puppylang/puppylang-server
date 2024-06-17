@@ -27,6 +27,8 @@ export interface PostFormType {
   author_id: string;
   author: Author;
   pet_id: number;
+  is_matched: boolean;
+  matched_user_id: null | string;
 }
 
 export interface Author {
