@@ -21,6 +21,7 @@ model Post {
   proposed_fee            Float                 @default(0)
   preferred_walk_location String                @db.VarChar(50)
   matched_user_id         String?
+  is_matched              Boolean               @default(false)
   cautions                Caution[]
   chat                    Chat[]
   like                    Like[]
@@ -29,7 +30,6 @@ model Post {
   pet                     Pet                   @relation(fields: [pet_id], references: [id], onDelete: Cascade)
   postView                PostView[]
   resume                  Resume[]
-  is_matched              Boolean               @default(false)
 }
 
 model PostView {
@@ -52,6 +52,8 @@ model User {
   gender                  Gender?
   region                  String[]              @default([])
   actived_region          String?
+  blocked_user            BlockedUser[]         @relation("BlockedUser")
+  blocker                 BlockedUser[]         @relation("Blocker")
   author_chat             Chat[]                @relation("AuthorChat")
   guest_chat              Chat[]                @relation("GuestChat")
   Like                    Like[]
@@ -61,12 +63,10 @@ model User {
   pet_walk_records        PetWalkRecord[]
   post                    Post[]
   PostView                PostView[]
+  reported_user           ReportedUser[]        @relation("ReportedUser")
+  reporter                ReportedUser[]        @relation("Reporter")
   resume                  Resume[]
   token                   Token?
-  blocker                BlockedUser[]    @relation("Blocker")
-  blocked_user           BlockedUser[]     @relation("BlockedUser")
-  reporter                ReportedUser[]    @relation("Reporter")
-  reported_user           ReportedUser[]     @relation("ReportedUser")
 }
 
 model Caution {
@@ -197,24 +197,23 @@ model Resume {
 }
 
 model ReportedUser {
-  id           Int      @id @default(autoincrement())
-  title        String
-  detail       String 
-  reporter_id  String   
-  reported_id  String 
-  created_at   DateTime   @default(now())
-
-  reported_user     User    @relation("ReportedUser",fields: [reported_id],references: [id],onDelete:Cascade)
-  reporter          User    @relation("Reporter",fields: [reporter_id],references: [id],onDelete:Cascade)
-  }
+  id            Int      @id @default(autoincrement())
+  title         String
+  detail        String
+  reporter_id   String
+  reported_id   String
+  created_at    DateTime @default(now())
+  reported_user User     @relation("ReportedUser", fields: [reported_id], references: [id], onDelete: Cascade)
+  reporter      User     @relation("Reporter", fields: [reporter_id], references: [id], onDelete: Cascade)
+}
 
 model BlockedUser {
-  blocked_id   String  
-  blocker_id   String 
-  created_at   DateTime   @default(now())
+  blocked_id   String
+  blocker_id   String
+  created_at   DateTime @default(now())
+  blocker      User     @relation("BlockedUser", fields: [blocked_id], references: [id], onDelete: Cascade)
+  blocked_user User     @relation("Blocker", fields: [blocker_id], references: [id], onDelete: Cascade)
 
-  blocked_user     User    @relation("Blocker",fields: [blocker_id],references: [id],onDelete:Cascade)
-  blocker          User    @relation("BlockedUser",fields: [blocked_id],references: [id],onDelete:Cascade)
   @@id([blocked_id, blocker_id])
 }
 
