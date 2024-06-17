@@ -518,6 +518,7 @@ class Post {
           status: StatusType.COMING,
         },
         where: { id: Number(post_id) },
+        include: { author: true, pet: true },
       });
 
       return post;
@@ -556,6 +557,7 @@ class Post {
           status: StatusType.IN_PROGRESS,
         },
         where: { id: Number(post_id) },
+        include: { author: true, pet: true },
       });
 
       return post;
@@ -589,7 +591,7 @@ class Post {
 
       const posts = await prisma.post.findMany({
         where: { matched_user_id: user_id },
-        include: { pet: true },
+        include: { author: true, pet: true },
       });
 
       return posts;
