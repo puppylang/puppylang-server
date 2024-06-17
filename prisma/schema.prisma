@@ -20,6 +20,7 @@ model Post {
   pet_id                  Int
   proposed_fee            Float                 @default(0)
   preferred_walk_location String                @db.VarChar(50)
+  matched_user_id         String?
   cautions                Caution[]
   chat                    Chat[]
   like                    Like[]
@@ -28,7 +29,7 @@ model Post {
   pet                     Pet                   @relation(fields: [pet_id], references: [id], onDelete: Cascade)
   postView                PostView[]
   resume                  Resume[]
-  matched_user_id         String?              
+  is_matched              Boolean               @default(false)
 }
 
 model PostView {
@@ -40,28 +41,32 @@ model PostView {
 }
 
 model User {
-  id                      String                @id
-  name                    String                @unique @db.VarChar(20)
-  image                   String?
-  created_at              DateTime              @default(now())
-  updated_at              DateTime?             @updatedAt
-  logged_from             LoggedFrom
-  birthday                String?
-  character               String?
-  gender                  Gender?
-  region                  String[]              @default([])
-  actived_region          String?
-  author_chat             Chat[]                @relation("AuthorChat")
-  guest_chat              Chat[]                @relation("GuestChat")
-  Like                    Like[]
-  message                 Message[]
-  pet                     Pet[]
-  pet_sitter_walk_records PetSitterWalkRecord[]
-  pet_walk_records        PetWalkRecord[]
-  post                    Post[]
-  PostView                PostView[]
-  resume                  Resume[]
-  token                   Token?
+  id                                          String                @id
+  name                                        String                @unique @db.VarChar(20)
+  image                                       String?
+  created_at                                  DateTime              @default(now())
+  updated_at                                  DateTime?             @updatedAt
+  logged_from                                 LoggedFrom
+  birthday                                    String?
+  character                                   String?
+  gender                                      Gender?
+  region                                      String[]              @default([])
+  actived_region                              String?
+  BlockedUser_BlockedUser_blocked_idToUser    BlockedUser[]         @relation("BlockedUser_blocked_idToUser")
+  BlockedUser_BlockedUser_blocker_idToUser    BlockedUser[]         @relation("BlockedUser_blocker_idToUser")
+  author_chat                                 Chat[]                @relation("AuthorChat")
+  guest_chat                                  Chat[]                @relation("GuestChat")
+  Like                                        Like[]
+  message                                     Message[]
+  pet                                         Pet[]
+  pet_sitter_walk_records                     PetSitterWalkRecord[]
+  pet_walk_records                            PetWalkRecord[]
+  post                                        Post[]
+  PostView                                    PostView[]
+  ReportedUser_ReportedUser_reported_idToUser ReportedUser[]        @relation("ReportedUser_reported_idToUser")
+  ReportedUser_ReportedUser_reporter_idToUser ReportedUser[]        @relation("ReportedUser_reporter_idToUser")
+  resume                                      Resume[]
+  token                                       Token?
 }
 
 model Caution {
@@ -189,6 +194,27 @@ model Resume {
   has_walk_record Boolean  @default(false)
   post            Post     @relation(fields: [post_id], references: [id], onDelete: Cascade)
   user            User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+}
+
+model BlockedUser {
+  blocked_id                        String
+  blocker_id                        String
+  created_at                        DateTime @default(now())
+  User_BlockedUser_blocked_idToUser User     @relation("BlockedUser_blocked_idToUser", fields: [blocked_id], references: [id], onDelete: Cascade)
+  User_BlockedUser_blocker_idToUser User     @relation("BlockedUser_blocker_idToUser", fields: [blocker_id], references: [id], onDelete: Cascade)
+
+  @@id([blocked_id, blocker_id])
+}
+
+model ReportedUser {
+  id                                  Int      @id @default(autoincrement())
+  title                               String
+  detail                              String
+  reporter_id                         String
+  reported_id                         String
+  created_at                          DateTime @default(now())
+  User_ReportedUser_reported_idToUser User     @relation("ReportedUser_reported_idToUser", fields: [reported_id], references: [id], onDelete: Cascade)
+  User_ReportedUser_reporter_idToUser User     @relation("ReportedUser_reporter_idToUser", fields: [reporter_id], references: [id], onDelete: Cascade)
 }
 
 enum LoggedFrom {
