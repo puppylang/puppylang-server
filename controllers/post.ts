@@ -563,6 +563,40 @@ class Post {
       console.log(err);
     }
   }
+
+  static async getMatchedPosts(request: CustomRequest<Params>) {
+    try {
+      if (!request.params) return;
+
+      const { user_id } = request.params;
+      if (!user_id) {
+        return CustomError({
+          message: "Invalid request. User ID is missing.",
+          status: 404,
+        });
+      }
+
+      const token = request.headers.authorization;
+      if (!token) return;
+
+      const user = await User.getUserInfo(token);
+      if (!user) {
+        return CustomError({
+          message: "가입되어 있지 않은 사용자입니다.",
+          status: 401,
+        });
+      }
+
+      const posts = await prisma.post.findMany({
+        where: { matched_user_id: user_id },
+        include: { pet: true },
+      });
+
+      return posts;
+    } catch (err) {
+      console.log(err);
+    }
+  }
 }
 
 export default Post;
