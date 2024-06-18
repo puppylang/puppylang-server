@@ -133,6 +133,7 @@ model Message {
   text       String
   is_read    Boolean  @default(false)
   user_image String?
+  is_blocked_other Boolean @default(false)
   chat       Chat     @relation(fields: [chat_id], references: [id], onDelete: Cascade)
   user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
 }
