@@ -594,7 +594,13 @@ class Post {
       }
 
       const posts = await prisma.post.findMany({
-        where: { matched_user_id: user_id },
+        where: {
+          matched_user_id: user_id,
+          status: StatusType.COMING,
+          pet_sitter_walk_record: {
+            none: {},
+          },
+        },
         include: { author: true, pet: true },
       });
 
