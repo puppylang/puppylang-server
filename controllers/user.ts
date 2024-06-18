@@ -436,7 +436,13 @@ class User {
         prisma.like.findMany({
           ...(usePagination && { skip: page * size }),
           ...(usePagination && { take: size }),
-          include: { post: true },
+          include: {
+            post: {
+              include: {
+                pet: true,
+              },
+            },
+          },
           where: { ...(authorId && { author_id: authorId }) },
         }),
         prisma.like.count({ where: { author_id: authorId } }),
