@@ -70,13 +70,12 @@ model User {
 }
 
 model Caution {
-  id           Int      @id @default(autoincrement())
-  content      String   @db.VarChar(50)
-  created_at   DateTime @default(now())
-  updated_at   DateTime @default(now())
-  post_id      Int
-  is_completed Boolean  @default(false)
-  post         Post     @relation(fields: [post_id], references: [id], onDelete: Cascade)
+  id         Int      @id @default(autoincrement())
+  content    String   @db.VarChar(50)
+  created_at DateTime @default(now())
+  updated_at DateTime @default(now())
+  post_id    Int
+  post       Post     @relation(fields: [post_id], references: [id], onDelete: Cascade)
 }
 
 model Pet {
@@ -139,14 +138,14 @@ model Message {
 }
 
 model Location {
-  id                 Int                  @id @default(autoincrement())
-  latitude           Decimal
-  longitude          Decimal
-  recorded_at        DateTime
-  pet_sitter_walk_id Int?
-  pet_walk_id        Int?
-  pet_sitter_walk    PetSitterWalkRecord? @relation(fields: [pet_sitter_walk_id], references: [id], onDelete: Cascade)
-  pet_walk_record    PetWalkRecord?       @relation(fields: [pet_walk_id], references: [id], onDelete: Cascade)
+  id                     Int                  @id @default(autoincrement())
+  latitude               Decimal
+  longitude              Decimal
+  recorded_at            DateTime
+  pet_sitter_walk_id     Int?
+  pet_walk_id            Int?
+  pet_sitter_walk_record PetSitterWalkRecord? @relation(fields: [pet_sitter_walk_id], references: [id], onDelete: Cascade)
+  pet_walk_record        PetWalkRecord?       @relation(fields: [pet_walk_id], references: [id], onDelete: Cascade)
 }
 
 model PetWalkRecord {
@@ -163,18 +162,28 @@ model PetWalkRecord {
 }
 
 model PetSitterWalkRecord {
-  id         Int        @id @default(autoincrement())
+  id         Int                 @id @default(autoincrement())
   start_at   DateTime
   end_at     DateTime
   distance   Float
   pet_id     Int
   post_id    Int
   user_id    String
-  created_at DateTime   @default(now())
+  created_at DateTime            @default(now())
   locations  Location[]
-  pet        Pet        @relation(fields: [pet_id], references: [id], onDelete: Cascade)
-  post       Post       @relation(fields: [post_id], references: [id], onDelete: Cascade)
-  user       User       @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  pet        Pet                 @relation(fields: [pet_id], references: [id], onDelete: Cascade)
+  post       Post                @relation(fields: [post_id], references: [id], onDelete: Cascade)
+  user       User                @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  cautions   WalkRecordCaution[]
+}
+
+model WalkRecordCaution {
+  id                     Int                 @id @default(autoincrement())
+  content                String              @db.VarChar(50)
+  created_at             DateTime            @default(now())
+  is_completed           Boolean             @default(false)
+  pet_sitter_walk_id     Int
+  pet_sitter_walk_record PetSitterWalkRecord @relation(fields: [pet_sitter_walk_id], references: [id], onDelete: Cascade)
 }
 
 model Resume {
