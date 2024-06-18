@@ -6,10 +6,10 @@ export enum StatusType {
   FINISHED = "FINISHED",
 }
 
-interface Caution {
+export interface Caution {
   id: number;
   content: string;
-  is_completed: boolean;
+  is_completed?: boolean;
   created_at: Date;
   updated_at: Date;
   post_id: number;
