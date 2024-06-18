@@ -6,6 +6,7 @@ import type { CustomRequest, Params } from "../types/request";
 import User from "./user";
 import type { CreateMessageType } from "../types/chat";
 import { CustomError } from "../utils/CustomError";
+import user from "../routes/userRoute";
 
 const prisma = new PrismaClient({});
 
@@ -42,9 +43,26 @@ class Chat {
 
     const chattingDetail = await prisma.chat.findUnique({
       where: { id: Number(id) },
+      include: {
+        user: {
+          include: {
+            blocker: true,
+          },
+        },
+        guest: {
+          include: {
+            blocker: true,
+          },
+        },
+      },
     });
 
-    return chattingDetail;
+    if (!chattingDetail) return;
+
+    return {
+      ...chattingDetail,
+      is_author: chattingDetail.author_id === user.id,
+    };
   }
 
   static async getChattings(
@@ -123,9 +141,29 @@ class Chat {
     return modifiedChatRooms;
   }
 
-  static async createMessage({ message }: CreateMessageType) {
+  static async createMessage(message: CreateMessageType) {
+    const { chat_id, text, time, user_id, other_user_id } = message;
+
+    const otherUserInfo = await prisma.user.findUnique({
+      where: {
+        id: other_user_id,
+      },
+      include: {
+        blocker: true,
+      },
+    });
+    const isBlockedOther = Boolean(
+      otherUserInfo?.blocker.find((blocker) => blocker.blocked_id === user_id)
+    );
+
     const createdMessage = await prisma.message.create({
-      data: message,
+      data: {
+        chat_id,
+        text,
+        time,
+        user_id,
+        is_blocked_other: isBlockedOther,
+      },
     });
 
     return createdMessage;

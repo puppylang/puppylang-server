@@ -1,17 +1,23 @@
 import Elysia from "elysia";
+
 import Chat from "../controllers/chat";
 
 const openSockets = {};
 
 const sendMessage = async (time, message) => {
-  const { chat_id, user_id } = message;
+  const { chat_id, user, text, other_user_id } = message;
+  const isBlockedUser = Boolean(
+    user.blocker.find((blocker) => blocker.blocked_id === otherUser)
+  );
+
+  if (isBlockedUser) return;
+
   const createdMessage = await Chat.createMessage({
-    message: {
-      ...message,
-      time,
-      user_id,
-      chat_id: Number(chat_id),
-    },
+    text,
+    time,
+    user_id: user.id,
+    chat_id: Number(chat_id),
+    other_user_id,
   });
 
   await openSockets[chat_id].forEach((ws) => {
