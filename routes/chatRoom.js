@@ -46,6 +46,7 @@ const readMessage = async (messageId, chatId, userId) => {
 const chat = new Elysia() //
   .get("/chats", Chat.getChattings)
   .get("/chat", Chat.getChattingDetail)
+  .delete("/chat", Chat.deleteChatting)
   .post("/chat", Chat.createChatRoom)
   .get("/chat/message/:id", Chat.getMessages)
   .get("/chat/post/:id", Chat.getDetailPostPet)

@@ -22,6 +22,7 @@ interface PaginatedPostProps {
   usePagination: boolean;
   statusQuery?: undefined | StatusType;
   authorId?: string;
+  userId?: string;
 }
 
 class Post {
@@ -126,6 +127,22 @@ class Post {
     try {
       if (!request.query) return;
 
+      const token = request.headers.authorization;
+      if (!token) {
+        return CustomError({
+          message: "게시글은 로그인 후 확인 가능합니다.",
+          status: 401,
+        });
+      }
+
+      const user = await User.getUserInfo(token);
+      if (!user) {
+        return CustomError({
+          message: "가입되어 있지 않은 사용자입니다.",
+          status: 401,
+        });
+      }
+
       const page = Number(request.query.page);
       const size = Number(request.query.size);
       const usePagination =
@@ -135,6 +152,7 @@ class Post {
         page,
         size,
         usePagination,
+        userId: user.id,
       });
     } catch (err) {
       console.log(err);
@@ -419,14 +437,32 @@ class Post {
     usePagination,
     statusQuery,
     authorId,
+    userId,
   }: PaginatedPostProps) {
     const [posts, totalPage] = await prisma.$transaction([
       prisma.post.findMany({
         ...(usePagination && { skip: page * size }),
         ...(usePagination && { take: size }),
         orderBy: [{ created_at: "desc" }],
-        include: { cautions: true, pet: true },
+        include: {
+          cautions: true,
+          pet: true,
+          author: {
+            include: {
+              blocked_user: true,
+            },
+          },
+        },
         where: {
+          author: {
+            blocked_user: {
+              none: {
+                blocker_id: {
+                  equals: userId,
+                },
+              },
+            },
+          },
           ...(statusQuery && { status: statusQuery }),
           ...(authorId && { author_id: authorId }),
         },

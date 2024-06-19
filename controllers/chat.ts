@@ -6,7 +6,6 @@ import type { CustomRequest, Params } from "../types/request";
 import User from "./user";
 import type { CreateMessageType } from "../types/chat";
 import { CustomError } from "../utils/CustomError";
-import user from "../routes/userRoute";
 
 const prisma = new PrismaClient({});
 
@@ -416,6 +415,27 @@ class Chat {
     stream.send("Exist notReadedMessage");
 
     return stream;
+  }
+
+  static async deleteChatting(request: CustomRequest<{ id: string }>) {
+    if (!request.body || !request.body.id) {
+      return CustomError({
+        message: "데이터값이 유효하지 않습니다.",
+        status: 400,
+      });
+    }
+
+    const { id } = request.body;
+
+    const deletedChat = await prisma.chat.delete({
+      where: {
+        id: Number(id),
+      },
+    });
+
+    if (deletedChat) {
+      request.set.status = 201;
+    }
   }
 }
 
