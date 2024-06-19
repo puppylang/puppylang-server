@@ -63,12 +63,10 @@ export default class Walk {
           longitude: location.longitude.toNumber(),
         }));
 
-        return new Response(
-          JSON.stringify({
-            ...createdPetWalkRecord,
-            locations: formattedLocations,
-          })
-        );
+        return {
+          ...createdPetWalkRecord,
+          locations: formattedLocations,
+        };
       }
     } catch (err) {
       console.log(err, "ERROR");
@@ -81,7 +79,7 @@ export default class Walk {
       const token = request.headers.authorization;
       if (!token) {
         return CustomError({
-          message: "게시글은 로그인 후 작성이 가능합니다.",
+          message: "산책 기록은 로그인 후 가능합니다.",
           status: 401,
         });
       }
@@ -93,8 +91,55 @@ export default class Walk {
           status: 401,
         });
       }
+
+      const {
+        start_at,
+        end_at,
+        locations,
+        distance,
+        cautions,
+        post_id,
+        pet_id,
+      } = request.body;
+
+      const convertedCautions = cautions.map(({ content, is_completed }) => ({
+        content,
+        is_completed,
+      }));
+
+      const createdPetSitterWalkRecord =
+        await prisma.petSitterWalkRecord.create({
+          data: {
+            start_at,
+            end_at,
+            distance,
+            pet_id,
+            post_id,
+            user_id: user.id,
+            locations: { create: locations },
+            cautions: {
+              create: convertedCautions || [],
+            },
+          },
+          include: { locations: true, cautions: true, pet: true },
+        });
+
+      if (createdPetSitterWalkRecord) {
+        const { locations: target } = createdPetSitterWalkRecord;
+        const formattedLocations = target.map((location) => ({
+          ...location,
+          latitude: location.latitude.toNumber(),
+          longitude: location.longitude.toNumber(),
+        }));
+
+        return {
+          ...createdPetSitterWalkRecord,
+          locations: formattedLocations,
+        };
+      }
     } catch (err) {
       console.log(err);
+      return CustomError({ message: "error", status: 500 });
     }
   }
 

@@ -11,6 +11,7 @@ import chat from "./routes/chatRoom";
 import Region from "./controllers/region";
 import imageRoute from "./routes/ImageRoute";
 import resumse from "./routes/resumeRoute";
+import report from "./routes/reportRoute";
 
 new Elysia()
   .use(
@@ -24,6 +25,7 @@ new Elysia()
   .use(imageRoute)
   .use(user)
   .use(chat)
+  .use(report)
   .guard(
     {
       beforeHandle(context) {

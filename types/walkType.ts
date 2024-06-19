@@ -1,3 +1,5 @@
+import type { Caution } from "./postType";
+
 export interface Location {
   latitude: number;
   longitude: number;
@@ -10,6 +12,8 @@ export interface PetWalkForm {
   locations: Location[];
   distance: number;
   pet_id: number;
+  post_id: number;
+  cautions: Caution[];
 }
 
 export interface PetSitterWalkForm {

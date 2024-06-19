@@ -10,6 +10,9 @@ const post = new Elysia({ prefix: "/posts" })
   .delete("/:id", Post.deletePost)
   .post("/:id/likes", Like.createLike)
   .delete("/:id/likes", Like.deleteLike)
-  .put("/:id/status", Post.updatePostStatus);
+  .put("/:id/status", Post.updatePostStatus)
+  .post("/:id/match", Post.matchPetSitter)
+  .delete("/:id/match", Post.unMatchPetSitter)
+  .get("/matched", Post.getMatchedPosts);
 
 export default post;

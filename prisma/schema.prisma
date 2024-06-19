@@ -20,6 +20,8 @@ model Post {
   pet_id                  Int
   proposed_fee            Float                 @default(0)
   preferred_walk_location String                @db.VarChar(50)
+  matched_user_id         String?
+  is_matched              Boolean               @default(false)
   cautions                Caution[]
   chat                    Chat[]
   like                    Like[]
@@ -48,8 +50,12 @@ model User {
   birthday                String?
   character               String?
   gender                  Gender?
+  region                  String[]              @default([])
   actived_region          String?
-  region                 String[]              @default([])
+  blocked_user            BlockedUser[]         @relation("BlockedUser")
+  blocker                 BlockedUser[]         @relation("Blocker")
+  author_chat             Chat[]                @relation("AuthorChat")
+  guest_chat              Chat[]                @relation("GuestChat")
   Like                    Like[]
   message                 Message[]
   pet                     Pet[]
@@ -57,6 +63,8 @@ model User {
   pet_walk_records        PetWalkRecord[]
   post                    Post[]
   PostView                PostView[]
+  reported_user           ReportedUser[]        @relation("ReportedUser")
+  reporter                ReportedUser[]        @relation("Reporter")
   resume                  Resume[]
   token                   Token?
   author_chat            Chat[]  @relation("AuthorChat")
@@ -64,13 +72,12 @@ model User {
 }
 
 model Caution {
-  id           Int      @id @default(autoincrement())
-  content      String   @db.VarChar(50)
-  created_at   DateTime @default(now())
-  updated_at   DateTime @default(now())
-  post_id      Int
-  is_completed Boolean  @default(false)
-  post         Post     @relation(fields: [post_id], references: [id], onDelete: Cascade)
+  id         Int      @id @default(autoincrement())
+  content    String   @db.VarChar(50)
+  created_at DateTime @default(now())
+  updated_at DateTime @default(now())
+  post_id    Int
+  post       Post     @relation(fields: [post_id], references: [id], onDelete: Cascade)
 }
 
 model Pet {
@@ -114,9 +121,8 @@ model Chat {
   guest_id    String
   author_id   String
   guest_image String?
-
-  guest      User   @relation("GuestChat",fields: [guest_id], references: [id], onDelete: Cascade)
-  user        User      @relation("AuthorChat",fields: [author_id], references: [id], onDelete: Cascade)
+  user        User      @relation("AuthorChat", fields: [author_id], references: [id], onDelete: Cascade)
+  guest       User      @relation("GuestChat", fields: [guest_id], references: [id], onDelete: Cascade)
   post        Post      @relation(fields: [post_id], references: [id], onDelete: Cascade)
   message     Message[]
 }
@@ -129,19 +135,20 @@ model Message {
   text       String
   is_read    Boolean  @default(false)
   user_image String?
+  is_blocked_other Boolean @default(false)
   chat       Chat     @relation(fields: [chat_id], references: [id], onDelete: Cascade)
   user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
 }
 
 model Location {
-  id                 Int                  @id @default(autoincrement())
-  latitude           Decimal
-  longitude          Decimal
-  recorded_at        DateTime
-  pet_sitter_walk_id Int?
-  pet_walk_id        Int?
-  pet_sitter_walk    PetSitterWalkRecord? @relation(fields: [pet_sitter_walk_id], references: [id], onDelete: Cascade)
-  pet_walk_record    PetWalkRecord?       @relation(fields: [pet_walk_id], references: [id], onDelete: Cascade)
+  id                     Int                  @id @default(autoincrement())
+  latitude               Decimal
+  longitude              Decimal
+  recorded_at            DateTime
+  pet_sitter_walk_id     Int?
+  pet_walk_id            Int?
+  pet_sitter_walk_record PetSitterWalkRecord? @relation(fields: [pet_sitter_walk_id], references: [id], onDelete: Cascade)
+  pet_walk_record        PetWalkRecord?       @relation(fields: [pet_walk_id], references: [id], onDelete: Cascade)
 }
 
 model PetWalkRecord {
@@ -158,37 +165,68 @@ model PetWalkRecord {
 }
 
 model PetSitterWalkRecord {
-  id         Int        @id @default(autoincrement())
+  id         Int                 @id @default(autoincrement())
   start_at   DateTime
   end_at     DateTime
   distance   Float
   pet_id     Int
   post_id    Int
   user_id    String
-  created_at DateTime   @default(now())
+  created_at DateTime            @default(now())
   locations  Location[]
-  pet        Pet        @relation(fields: [pet_id], references: [id], onDelete: Cascade)
-  post       Post       @relation(fields: [post_id], references: [id], onDelete: Cascade)
-  user       User       @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  pet        Pet                 @relation(fields: [pet_id], references: [id], onDelete: Cascade)
+  post       Post                @relation(fields: [post_id], references: [id], onDelete: Cascade)
+  user       User                @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  cautions   WalkRecordCaution[]
+}
+
+model WalkRecordCaution {
+  id                     Int                 @id @default(autoincrement())
+  content                String              @db.VarChar(50)
+  created_at             DateTime            @default(now())
+  is_completed           Boolean             @default(false)
+  pet_sitter_walk_id     Int
+  pet_sitter_walk_record PetSitterWalkRecord @relation(fields: [pet_sitter_walk_id], references: [id], onDelete: Cascade)
 }
 
 model Resume {
-  id           Int      @id @default(autoincrement())
-  image        String?
-  gender       Gender?
-  name         String?
-  birth_year   String
-  introduction String
-  post_id      Int
-  user_id      String
-  has_puppy    Boolean?
-  phone_number String
+  id              Int      @id @default(autoincrement())
+  image           String?
+  gender          Gender?
+  name            String?
+  birth_year      String
+  introduction    String
+  post_id         Int
+  user_id         String
+  has_puppy       Boolean?
+  phone_number    String
+  created_at      DateTime @default(now())
+  is_checked      Boolean  @default(false)
+  is_selected     Boolean  @default(false)
+  has_walk_record Boolean  @default(false)
+  post            Post     @relation(fields: [post_id], references: [id], onDelete: Cascade)
+  user            User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+}
+
+model ReportedUser {
+  id            Int      @id @default(autoincrement())
+  title         String
+  detail        String
+  reporter_id   String
+  reported_id   String
+  created_at    DateTime @default(now())
+  reported_user User     @relation("ReportedUser", fields: [reported_id], references: [id], onDelete: Cascade)
+  reporter      User     @relation("Reporter", fields: [reporter_id], references: [id], onDelete: Cascade)
+}
+
+model BlockedUser {
+  blocked_id   String
+  blocker_id   String
   created_at   DateTime @default(now())
-  has_walk_record Boolean @default(false) 
-  is_checked   Boolean  @default(false)
-  is_selected  Boolean  @default(false)
-  post         Post     @relation(fields: [post_id], references: [id], onDelete: Cascade)
-  user         User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  blocker      User     @relation("BlockedUser", fields: [blocked_id], references: [id], onDelete: Cascade)
+  blocked_user User     @relation("Blocker", fields: [blocker_id], references: [id], onDelete: Cascade)
+
+  @@id([blocked_id, blocker_id])
 }
 
 enum LoggedFrom {

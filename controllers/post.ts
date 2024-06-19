@@ -2,7 +2,11 @@ import { PrismaClient, type Caution } from "@prisma/client";
 import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
 
 import { CustomError } from "../utils/CustomError";
-import { StatusType, type PostFormType } from "../types/postType";
+import {
+  StatusType,
+  type PostFormType,
+  type PostQuery,
+} from "../types/postType";
 import {
   type CustomRequest,
   type PageQuery,
@@ -18,6 +22,7 @@ interface PaginatedPostProps {
   usePagination: boolean;
   statusQuery?: undefined | StatusType;
   authorId?: string;
+  userId?: string;
 }
 
 class Post {
@@ -100,19 +105,17 @@ class Post {
           cautions,
         } = createdPost;
 
-        return new Response(
-          JSON.stringify({
-            title,
-            content,
-            proposed_fee,
-            preferred_walk_location,
-            start_at,
-            end_at,
-            status,
-            author,
-            cautions,
-          })
-        );
+        return {
+          title,
+          content,
+          proposed_fee,
+          preferred_walk_location,
+          start_at,
+          end_at,
+          status,
+          author,
+          cautions,
+        };
       }
     } catch (err) {
       console.log(err, "ERR");
@@ -124,6 +127,22 @@ class Post {
     try {
       if (!request.query) return;
 
+      const token = request.headers.authorization;
+      if (!token) {
+        return CustomError({
+          message: "게시글은 로그인 후 확인 가능합니다.",
+          status: 401,
+        });
+      }
+
+      const user = await User.getUserInfo(token);
+      if (!user) {
+        return CustomError({
+          message: "가입되어 있지 않은 사용자입니다.",
+          status: 401,
+        });
+      }
+
       const page = Number(request.query.page);
       const size = Number(request.query.size);
       const usePagination =
@@ -133,6 +152,7 @@ class Post {
         page,
         size,
         usePagination,
+        userId: user.id,
       });
     } catch (err) {
       console.log(err);
@@ -153,9 +173,22 @@ class Post {
       }
 
       const token = request.headers.authorization;
-      if (!token) return;
+
+      if (!token) {
+        return CustomError({
+          message: "게시글은 로그인 후 확인 가능합니다.",
+          status: 401,
+        });
+      }
 
       const user = await User.getUserInfo(token);
+
+      if (!user) {
+        return CustomError({
+          message: "가입되어 있지 않은 사용자입니다.",
+          status: 401,
+        });
+      }
 
       const post = await prisma.post.findUnique({
         where: { id: Number(post_id) },
@@ -169,23 +202,18 @@ class Post {
         });
       }
 
-      const [like_count, view] = await prisma.$transaction([
-        prisma.like.count({ where: { post_id: Number(post_id) } }),
-        prisma.postView.count({
-          where: { author_id: user?.id, post_id: Number(post_id) },
-        }),
-      ]);
+      const like_count = await prisma.like.count({
+        where: { post_id: Number(post_id) },
+      });
+      const view = await prisma.postView.count({
+        where: { author_id: user?.id, post_id: Number(post_id) },
+      });
 
-      const is_liked = user
-        ? Boolean(
-            await prisma.like.findFirst({
-              where: {
-                author_id: user.id,
-                post_id: Number(post_id),
-              },
-            })
-          )
-        : false;
+      const is_liked = Boolean(
+        await prisma.like.findFirst({
+          where: { author_id: user.id, post_id: Number(post_id) },
+        })
+      );
 
       const view_count = await Post.findPostView(
         user?.id,
@@ -195,15 +223,13 @@ class Post {
 
       const { pet, ...postData } = post;
 
-      return new Response(
-        JSON.stringify({
-          ...postData,
-          pet: !pet ? null : pet, // TODO 만약에 등록했던 반려견을 삭제했다면?
-          is_liked,
-          like_count,
-          view_count,
-        })
-      );
+      return {
+        ...postData,
+        pet: !pet ? null : pet,
+        is_liked,
+        like_count,
+        view_count,
+      };
     } catch (err) {
       console.log(err);
       return CustomError({ message: "error ", status: 500 });
@@ -266,6 +292,7 @@ class Post {
         proposed_fee,
         preferred_walk_location,
         pet_id,
+        matched_user_id,
       } = request.body;
 
       await Post.updateCaution(requestCautions, postId);
@@ -282,12 +309,13 @@ class Post {
           status,
           updated_at: new Date(),
           pet_id,
+          matched_user_id,
         },
         include: { cautions: true, author: true, pet: true },
       });
 
       if (updatedPost) {
-        return new Response(JSON.stringify(updatedPost));
+        return updatedPost;
       }
     } catch (err) {
       if (err instanceof PrismaClientKnownRequestError) {
@@ -409,14 +437,32 @@ class Post {
     usePagination,
     statusQuery,
     authorId,
+    userId,
   }: PaginatedPostProps) {
     const [posts, totalPage] = await prisma.$transaction([
       prisma.post.findMany({
         ...(usePagination && { skip: page * size }),
         ...(usePagination && { take: size }),
         orderBy: [{ created_at: "desc" }],
-        include: { cautions: true, pet: true },
+        include: {
+          cautions: true,
+          pet: true,
+          author: {
+            include: {
+              blocked_user: true,
+            },
+          },
+        },
         where: {
+          author: {
+            blocked_user: {
+              none: {
+                blocker_id: {
+                  equals: userId,
+                },
+              },
+            },
+          },
           ...(statusQuery && { status: statusQuery }),
           ...(authorId && { author_id: authorId }),
         },
@@ -473,8 +519,128 @@ class Post {
       });
 
       if (updatePost) {
-        return new Response(JSON.stringify(updatePost));
+        return updatePost;
       }
+    } catch (err) {
+      console.log(err);
+    }
+  }
+
+  static async matchPetSitter(
+    request: CustomRequest<Params & { matched_user_id: string }>
+  ) {
+    try {
+      if (!request.params) return;
+
+      const { id: post_id } = request.params;
+      if (!post_id) {
+        return CustomError({
+          message: "Invalid request. ID is missing.",
+          status: 404,
+        });
+      }
+
+      const token = request.headers.authorization;
+      if (!token) return;
+
+      const user = await User.getUserInfo(token);
+      if (!user) {
+        return CustomError({
+          message: "가입되어 있지 않은 사용자입니다.",
+          status: 401,
+        });
+      }
+
+      const post = await prisma.post.update({
+        data: {
+          is_matched: true,
+          matched_user_id: request.body.matched_user_id,
+          status: StatusType.COMING,
+        },
+        where: { id: Number(post_id) },
+        include: { author: true, pet: true },
+      });
+
+      return post;
+    } catch (err) {
+      console.log(err);
+    }
+  }
+
+  static async unMatchPetSitter(request: CustomRequest<Params>) {
+    try {
+      if (!request.params) return;
+
+      const { id: post_id } = request.params;
+      if (!post_id) {
+        return CustomError({
+          message: "Invalid request. ID is missing.",
+          status: 404,
+        });
+      }
+
+      const token = request.headers.authorization;
+      if (!token) return;
+
+      const user = await User.getUserInfo(token);
+      if (!user) {
+        return CustomError({
+          message: "가입되어 있지 않은 사용자입니다.",
+          status: 401,
+        });
+      }
+
+      const post = await prisma.post.update({
+        data: {
+          is_matched: false,
+          matched_user_id: null,
+          status: StatusType.IN_PROGRESS,
+        },
+        where: { id: Number(post_id) },
+        include: { author: true, pet: true },
+      });
+
+      return post;
+    } catch (err) {
+      console.log(err);
+    }
+  }
+
+  static async getMatchedPosts(request: CustomRequest<PostQuery>) {
+    try {
+      if (!request.query) return;
+
+      const { user_id } = request.query;
+      if (!user_id) {
+        return CustomError({
+          message: "Invalid request. User ID is missing.",
+          status: 404,
+        });
+      }
+
+      const token = request.headers.authorization;
+      if (!token) return;
+
+      const user = await User.getUserInfo(token);
+      if (!user) {
+        return CustomError({
+          message: "가입되어 있지 않은 사용자입니다.",
+          status: 401,
+        });
+      }
+
+      const posts = await prisma.post.findMany({
+        where: {
+          matched_user_id: user_id,
+          status: StatusType.COMING,
+          pet_sitter_walk_record: {
+            none: {},
+          },
+        },
+        include: { author: true, pet: true },
+      });
+
+      return posts;
     } catch (err) {
       console.log(err);
     }

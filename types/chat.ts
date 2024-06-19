@@ -1,8 +1,7 @@
 export interface CreateMessageType {
-  message: {
-    chat_id: number;
-    user_id: string;
-    time: Date;
-    text: string;
-  };
+  chat_id: number;
+  user_id: string;
+  time: Date;
+  text: string;
+  other_user_id: string;
 }

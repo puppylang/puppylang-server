@@ -6,10 +6,10 @@ export enum StatusType {
   FINISHED = "FINISHED",
 }
 
-interface Caution {
+export interface Caution {
   id: number;
   content: string;
-  is_completed: boolean;
+  is_completed?: boolean;
   created_at: Date;
   updated_at: Date;
   post_id: number;
@@ -27,6 +27,8 @@ export interface PostFormType {
   author_id: string;
   author: Author;
   pet_id: number;
+  is_matched: boolean;
+  matched_user_id: null | string;
 }
 
 export interface Author {
@@ -37,7 +39,8 @@ export interface Author {
   is_first_login: boolean;
 }
 
-export interface PostParam {
+export interface PostQuery {
   status?: StatusType;
   author_id?: string;
+  user_id?: string;
 }

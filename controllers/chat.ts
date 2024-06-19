@@ -1,11 +1,11 @@
 import { PrismaClient } from "@prisma/client";
-// import { Stream } from "@elysiajs/stream";
+import { Stream } from "@elysiajs/stream";
+import type { IncomingHttpHeaders } from "http";
 
 import type { CustomRequest, Params } from "../types/request";
 import User from "./user";
 import type { CreateMessageType } from "../types/chat";
 import { CustomError } from "../utils/CustomError";
-import type { IncomingHttpHeaders } from "http";
 
 const prisma = new PrismaClient({});
 
@@ -25,6 +25,45 @@ interface ChatRequest {
 }
 
 class Chat {
+  static async getChattingDetail(request: CustomRequest<{ id: string }>) {
+    const token = request.headers.authorization;
+    if (!token) return;
+    const user = await User.getUserInfo(token);
+    if (!user) return;
+
+    if (!request.query || !request.query.id) {
+      return CustomError({
+        status: 400,
+        message: "Invalid request: Missing required type parameters.",
+      });
+    }
+
+    const { id } = request.query;
+
+    const chattingDetail = await prisma.chat.findUnique({
+      where: { id: Number(id) },
+      include: {
+        user: {
+          include: {
+            blocker: true,
+          },
+        },
+        guest: {
+          include: {
+            blocker: true,
+          },
+        },
+      },
+    });
+
+    if (!chattingDetail) return;
+
+    return {
+      ...chattingDetail,
+      is_author: chattingDetail.author_id === user.id,
+    };
+  }
+
   static async getChattings(
     request: CustomRequest<{ type: "GUEST" | "AUTHOR" }>
   ) {
@@ -33,7 +72,12 @@ class Chat {
     const user = await User.getUserInfo(token);
     if (!user) return;
 
-    if (!request.query || !request.query.type) return;
+    if (!request.query || !request.query.type) {
+      return CustomError({
+        status: 400,
+        message: "Invalid request: Missing required type parameters.",
+      });
+    }
 
     const { type } = request.query;
 
@@ -96,9 +140,29 @@ class Chat {
     return modifiedChatRooms;
   }
 
-  static async createMessage({ message }: CreateMessageType) {
+  static async createMessage(message: CreateMessageType) {
+    const { chat_id, text, time, user_id, other_user_id } = message;
+
+    const otherUserInfo = await prisma.user.findUnique({
+      where: {
+        id: other_user_id,
+      },
+      include: {
+        blocker: true,
+      },
+    });
+    const isBlockedOther = Boolean(
+      otherUserInfo?.blocker.find((blocker) => blocker.blocked_id === user_id)
+    );
+
     const createdMessage = await prisma.message.create({
-      data: message,
+      data: {
+        chat_id,
+        text,
+        time,
+        user_id,
+        is_blocked_other: isBlockedOther,
+      },
     });
 
     return createdMessage;
@@ -297,45 +361,82 @@ class Chat {
     }
   }
 
-  // static async getNotReadedMessage(
-  //   request: CustomRequest<{
-  //     token: {
-  //       value: string;
-  //     };
-  //   }>
-  // ) {
-  //   if (!request.cookie) {
-  //     CustomError({
-  //       message: "token이 존재하지 않습니다.",
-  //       status: 400,
-  //     });
-  //     return;
-  //   }
+  static async getNotReadedMessage(
+    request: CustomRequest<{
+      token: {
+        value: string;
+      };
+    }>
+  ) {
+    if (!request.headers.authorization) {
+      CustomError({
+        message: "token이 존재하지 않습니다.",
+        status: 400,
+      });
 
-  //   const token = request.cookie.token.value;
-  //   if (!token) return;
-  //   const user = await User.getUserInfo(token);
-  //   if (!user) return;
+      return;
+    }
 
-  //   const stream = new Stream();
+    const token = request.headers.authorization;
+    if (!token) return;
+    const user = await User.getUserInfo(token);
+    if (!user) return;
 
-  //   const chatting = await prisma.chat.findMany({
-  //     where: {
-  //       OR: [
-  //         {
-  //           author_id: user.id,
-  //         },
-  //         {
-  //           guest_id: user.id,
-  //         },
-  //       ],
-  //     },
-  //   });
+    const stream = new Stream();
 
-  //   stream.send("hello world");
+    const chatting = await prisma.chat.findMany({
+      include: {
+        message: true,
+      },
+      where: {
+        OR: [
+          {
+            author_id: user.id,
+          },
+          {
+            guest_id: user.id,
+          },
+        ],
+      },
+    });
 
-  //   return stream;
-  // }
+    if (chatting.length) return;
+
+    const notReadedChatting = chatting.find((chat) => {
+      const notReadedMessage = chat.message.filter(
+        (item) => item.user_id !== user.id && !item.is_read
+      );
+
+      return Boolean(notReadedMessage.length);
+    });
+
+    if (!notReadedChatting) return;
+
+    stream.send("Exist notReadedMessage");
+
+    return stream;
+  }
+
+  static async deleteChatting(request: CustomRequest<{ id: string }>) {
+    if (!request.body || !request.body.id) {
+      return CustomError({
+        message: "데이터값이 유효하지 않습니다.",
+        status: 400,
+      });
+    }
+
+    const { id } = request.body;
+
+    const deletedChat = await prisma.chat.delete({
+      where: {
+        id: Number(id),
+      },
+    });
+
+    if (deletedChat) {
+      request.set.status = 201;
+    }
+  }
 }
 
 export default Chat;

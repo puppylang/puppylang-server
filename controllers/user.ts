@@ -21,7 +21,7 @@ import type { CustomRequest, PageQuery, Params } from "../types/request";
 import { createToken } from "../utils/jwt";
 import { getLocalInfo, getLocalInfoWithGeo } from "../services/kakaoRegion";
 import type { UserRegionReqType } from "../types/region";
-import type { PostParam } from "../types/postType";
+import type { PostQuery } from "../types/postType";
 import Post from "./post";
 import { CustomError } from "../utils/CustomError";
 
@@ -284,6 +284,9 @@ class User {
       where: {
         id,
       },
+      include: {
+        blocker: true,
+      },
     });
 
     return user;
@@ -362,7 +365,7 @@ class User {
     }
   }
 
-  static async getUserPosts(request: CustomRequest<PageQuery & PostParam>) {
+  static async getUserPosts(request: CustomRequest<PageQuery & PostQuery>) {
     try {
       if (!request.query) return;
 
@@ -402,7 +405,7 @@ class User {
   }
 
   static async getUserLikedPosts(
-    request: CustomRequest<PageQuery & PostParam>
+    request: CustomRequest<PageQuery & PostQuery>
   ) {
     try {
       if (!request.query) return;
@@ -433,7 +436,13 @@ class User {
         prisma.like.findMany({
           ...(usePagination && { skip: page * size }),
           ...(usePagination && { take: size }),
-          include: { post: true },
+          include: {
+            post: {
+              include: {
+                pet: true,
+              },
+            },
+          },
           where: { ...(authorId && { author_id: authorId }) },
         }),
         prisma.like.count({ where: { author_id: authorId } }),
