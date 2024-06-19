@@ -67,8 +67,6 @@ model User {
   reporter                ReportedUser[]        @relation("Reporter")
   resume                  Resume[]
   token                   Token?
-  author_chat            Chat[]  @relation("AuthorChat")
-  guest_chat             Chat[]  @relation("GuestChat")
 }
 
 model Caution {
