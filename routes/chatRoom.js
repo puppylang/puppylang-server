@@ -55,7 +55,7 @@ const chat = new Elysia() //
   .get("/chat/sse", Chat.getNotReadedMessage)
   .ws("/chat/ws", {
     open() {
-      console.log("socket sever open!");
+      console.log("socket server open!!");
     },
     async message(ws, websocketData) {
       const time = new Date();
