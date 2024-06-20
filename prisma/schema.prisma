@@ -126,16 +126,16 @@ model Chat {
 }
 
 model Message {
-  id         Int      @id @default(autoincrement())
-  chat_id    Int
-  user_id    String
-  time       DateTime
-  text       String
-  is_read    Boolean  @default(false)
-  user_image String?
-  is_blocked_other Boolean @default(false)
-  chat       Chat     @relation(fields: [chat_id], references: [id], onDelete: Cascade)
-  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  id               Int      @id @default(autoincrement())
+  chat_id          Int
+  user_id          String
+  time             DateTime
+  text             String
+  is_read          Boolean  @default(false)
+  user_image       String?
+  is_blocked_other Boolean  @default(false)
+  chat             Chat     @relation(fields: [chat_id], references: [id], onDelete: Cascade)
+  user             User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
 }
 
 model Location {
