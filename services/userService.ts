@@ -8,24 +8,31 @@ import type {
   NaverUserInfoType,
 } from "../types/userType";
 
-export const getKakaoToken = async (code: string): Promise<KakaoTokenType> => {
-  const KAKAO_TOKEN_URL = `https://kauth.kakao.com/oauth/token`;
-  const formData = new URLSearchParams();
-  formData.append("grant_type", "authorization_code");
-  formData.append("client_id", process.env.KAKAO_REST_API_KEY as string);
-  formData.append("redirect_uri", process.env.KAKAO_REDIRECT_URI as string);
-  formData.append("code", code);
+export const getKakaoToken = async (
+  code: string
+): Promise<KakaoTokenType | undefined> => {
+  try {
+    const KAKAO_TOKEN_URL = `https://kauth.kakao.com/oauth/token`;
+    const formData = new URLSearchParams();
+    formData.append("grant_type", "authorization_code");
+    formData.append("client_id", process.env.KAKAO_REST_API_KEY as string);
+    formData.append("redirect_uri", process.env.KAKAO_REDIRECT_URI as string);
+    formData.append("code", code);
 
-  const response = await fetch(KAKAO_TOKEN_URL, {
-    method: "POST",
-    headers: {
-      ContentType: "application/x-www-form-urlencoded;charset=utf-8",
-    },
-    body: formData,
-  });
+    const response = await fetch(KAKAO_TOKEN_URL, {
+      method: "POST",
+      headers: {
+        ContentType: "application/x-www-form-urlencoded;charset=utf-8",
+      },
+      body: formData,
+    });
+    console.log("token response", response);
 
-  const data = (await response.json()) as KakaoTokenType;
-  return data;
+    const data = (await response.json()) as KakaoTokenType;
+    return data;
+  } catch (err) {
+    console.error(err);
+  }
 };
 
 export const getKakaoUserInfo = async (
@@ -39,6 +46,7 @@ export const getKakaoUserInfo = async (
       },
       proxy: process.env.NOBLE_PROXY_URL,
     });
+    console.log(response);
 
     const data = (await response.json()) as KakaoUserInfoType;
     return data;

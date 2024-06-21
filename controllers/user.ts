@@ -65,13 +65,21 @@ class User {
     try {
       const { code } = request.body;
       const kakaoUserData = await getKakaoToken(code);
+      if (!kakaoUserData) {
+        return CustomError({
+          message:
+            "카카오 토큰을 가져오지 못했습니다. 잠시 후 다시 이용해 주세요.",
+          status: 401,
+        });
+      }
+
       const kakaoAccessToken = kakaoUserData.access_token;
       if (!kakaoAccessToken) return;
 
       const kakaoResponse = await getKakaoUserInfo(kakaoAccessToken);
       if (!kakaoResponse) {
         return CustomError({
-          status: 400,
+          status: 401,
           message:
             "카카오 정보를 가져오지 못했습니다. 잠시 후 다시 이용해 주세요.",
         });
