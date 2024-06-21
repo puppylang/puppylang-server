@@ -36,6 +36,7 @@ export const getKakaoUserInfo = async (
     headers: {
       Authorization: `Bearer ${token}`,
     },
+    proxy: process.env.NOBLE_PROXY_URL,
   });
 
   const data = (await response.json()) as KakaoUserInfoType;
