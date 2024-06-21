@@ -30,17 +30,21 @@ export const getKakaoToken = async (code: string): Promise<KakaoTokenType> => {
 
 export const getKakaoUserInfo = async (
   token: string
-): Promise<KakaoUserInfoType> => {
-  const URL = "https://kapi.kakao.com/v2/user/me";
-  const response = await fetch(URL, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-    proxy: process.env.NOBLE_PROXY_URL,
-  });
+): Promise<KakaoUserInfoType | undefined> => {
+  try {
+    const URL = "https://kapi.kakao.com/v2/user/me";
+    const response = await fetch(URL, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      proxy: process.env.NOBLE_PROXY_URL,
+    });
 
-  const data = (await response.json()) as KakaoUserInfoType;
-  return data;
+    const data = (await response.json()) as KakaoUserInfoType;
+    return data;
+  } catch (err) {
+    console.log(err);
+  }
 };
 
 export const getNaverUserInfo = async (

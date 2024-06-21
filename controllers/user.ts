@@ -68,7 +68,15 @@ class User {
       const kakaoAccessToken = kakaoUserData.access_token;
       if (!kakaoAccessToken) return;
 
-      const { properties, id } = await getKakaoUserInfo(kakaoAccessToken);
+      const kakaoResponse = await getKakaoUserInfo(kakaoAccessToken);
+      if (!kakaoResponse) {
+        return CustomError({
+          status: 400,
+          message:
+            "카카오 정보를 가져오지 못했습니다. 잠시 후 다시 이용해 주세요.",
+        });
+      }
+      const { properties, id } = kakaoResponse;
       const { nickname } = properties;
 
       const user = await User.readUserInfo(
