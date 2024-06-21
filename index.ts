@@ -17,7 +17,12 @@ new Elysia()
   .use(
     cors({
       methods: ["GET", "PUT", "POST", "DELETE", "PATCH"],
-      allowedHeaders: ["Content-Type", "Authorization", "WithCredentials"],
+      allowedHeaders: [
+        "Content-Type",
+        "Authorization",
+        "WithCredentials",
+        "Access-Control-Allow-Origin",
+      ],
     })
   )
   .get("/region", Region.getRegionInfo)
