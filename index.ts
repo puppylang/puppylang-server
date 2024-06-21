@@ -18,7 +18,12 @@ new Elysia()
     cors({
       origin: ["http://localhost:3000", "https://puppylang.netlify.app"],
       methods: ["GET", "PUT", "POST", "DELETE", "PATCH"],
-      allowedHeaders: ["Content-Type", "Authorization", "WithCredentials"],
+      allowedHeaders: [
+        "Content-Type",
+        "Authorization",
+        "WithCredentials",
+        "Access-Control-Allow-Origin",
+      ],
     })
   )
   .get("/region", Region.getRegionInfo)
