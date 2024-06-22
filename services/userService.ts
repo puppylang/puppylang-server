@@ -26,7 +26,6 @@ export const getKakaoToken = async (
       },
       body: formData,
     });
-    console.log("token response", response);
 
     const data = (await response.json()) as KakaoTokenType;
     return data;
@@ -46,7 +45,6 @@ export const getKakaoUserInfo = async (
       },
       proxy: process.env.NOBLE_PROXY_URL,
     });
-    console.log(response);
 
     const data = (await response.json()) as KakaoUserInfoType;
     return data;
