@@ -25,10 +25,6 @@ const user = new Elysia({ prefix: "/user" })
 
   .get("/record-walks/count", User.getUserRecordWalksCount)
   .get("/record-walks/distance", User.getUserRecordWalksDistance)
-  .get("/:user_id/record-walks", User.getUserRecordWalks)
-
-  .post("/region", Region.createRegion)
-  .delete("/region", Region.deleteRegion)
-  .patch("/actived-region", Region.updateUserActivedRegion);
+  .get("/:user_id/record-walks", User.getUserRecordWalks);
 
 export default user;

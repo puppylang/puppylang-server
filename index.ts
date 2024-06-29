@@ -12,6 +12,7 @@ import Region from "./controllers/region";
 import imageRoute from "./routes/ImageRoute";
 import resumse from "./routes/resumeRoute";
 import report from "./routes/reportRoute";
+import regionRoute from "./routes/regionRoute";
 
 new Elysia()
   .use(
@@ -25,7 +26,7 @@ new Elysia()
       ],
     })
   )
-  .get("/region", Region.getRegionInfo)
+  .use(regionRoute)
   .use(resumse)
   .use(imageRoute)
   .use(user)

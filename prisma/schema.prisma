@@ -50,8 +50,7 @@ model User {
   birthday                String?
   character               String?
   gender                  Gender?
-  region                  String[]              @default([])
-  actived_region          String?
+  actived_region          ActivedRegion?
   blocked_user            BlockedUser[]         @relation("BlockedUser")
   blocker                 BlockedUser[]         @relation("Blocker")
   author_chat             Chat[]                @relation("AuthorChat")
@@ -63,10 +62,28 @@ model User {
   pet_walk_records        PetWalkRecord[]
   post                    Post[]
   PostView                PostView[]
+  region                  Region[]
   reported_user           ReportedUser[]        @relation("ReportedUser")
   reporter                ReportedUser[]        @relation("Reporter")
   resume                  Resume[]
   token                   Token?
+}
+
+model Region {
+  id             Int            @id @default(autoincrement())
+  region         String
+  user_id        String
+  created_at     DateTime       @default(now())
+  actived_region ActivedRegion?
+  user           User           @relation(fields: [user_id], references: [id], onDelete: Cascade)
+}
+
+model ActivedRegion {
+  region_id  Int      @unique
+  user_id    String   @unique
+  created_at DateTime @default(now())
+  region     Region   @relation(fields: [region_id], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
 }
 
 model Caution {
