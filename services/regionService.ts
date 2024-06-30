@@ -25,5 +25,26 @@ export const getLocalInfoWithGeo = async ({
     },
   });
   const data = (await response.json()) as KakaoLocalWithGeoType;
-  return data;
+  const changedDongRegionType: DongRegionType = {
+    response: {
+      status: "OK",
+      result: {
+        crs: "",
+        type: "",
+        items: data.documents.map(({ code, address_name, x, y }) => {
+          return {
+            id: code,
+            title: address_name,
+            geometry: "KAKAO",
+            point: {
+              x: String(x),
+              y: String(y),
+            },
+          };
+        }),
+      },
+    },
+  };
+
+  return changedDongRegionType;
 };

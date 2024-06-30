@@ -21,14 +21,11 @@ class Region {
 
     if (request.query.x && request.query.y) {
       const { x, y } = request.query;
-      const { documents } = await getLocalInfoWithGeo({ x, y });
-      return documents.map((document) => ({
-        address: null,
-        road_address: null,
-        address_name: document.address_name,
-        x: String(document.x),
-        y: String(document.y),
-      }));
+      const data = await getLocalInfoWithGeo({ x, y });
+      return {
+        stauts: data.response.status,
+        regions: data.response.result?.items || [],
+      };
     }
   }
 

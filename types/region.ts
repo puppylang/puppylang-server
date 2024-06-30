@@ -17,18 +17,18 @@ export interface KakaoLocalWithGeoType {
 
 export interface DongRegionType {
   response: {
-    service: {
+    service?: {
       name: "search";
       version: "2.0";
       operation: "search";
       time: string;
     };
     status: "OK" | "NOT_FOUND";
-    record: {
+    record?: {
       total: string;
       current: string;
     };
-    page: {
+    page?: {
       total: string;
       current: string;
       size: string;
