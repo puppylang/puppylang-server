@@ -1,5 +1,5 @@
 import { PrismaClient } from "@prisma/client";
-import { getLocalInfo, getLocalInfoWithGeo } from "../services/kakaoRegion";
+import { getLocalInfo, getLocalInfoWithGeo } from "../services/regionService";
 import type { UserRegionReqType } from "../types/region";
 import type { CustomRequest } from "../types/request";
 import User from "./user";
@@ -13,9 +13,10 @@ class Region {
     if (request.query.text) {
       const text = request.query.text || "";
       const data = await getLocalInfo(text);
-      if (!data) return;
-      const { documents } = data;
-      return documents;
+      return {
+        status: data ? data.response.status : "NOT_FOUND",
+        regions: data?.response.result?.items || [],
+      };
     }
 
     if (request.query.x && request.query.y) {

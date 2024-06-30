@@ -19,7 +19,7 @@ import {
 } from "../services/userService";
 import type { CustomRequest, PageQuery, Params } from "../types/request";
 import { createToken } from "../utils/jwt";
-import { getLocalInfo, getLocalInfoWithGeo } from "../services/kakaoRegion";
+import { getLocalInfo, getLocalInfoWithGeo } from "../services/regionService";
 import type { UserRegionReqType } from "../types/region";
 import type { PostQuery } from "../types/postType";
 import Post from "./post";
@@ -306,29 +306,6 @@ class User {
     });
 
     return user;
-  }
-
-  static async getRegion(request: CustomRequest<UserRegionReqType>) {
-    if (!request.query) return;
-    if (request.query.text) {
-      const text = request.query.text || "";
-      const data = await getLocalInfo(text);
-      if (!data) return;
-      const { documents } = data;
-      return documents;
-    }
-
-    if (request.query.x && request.query.y) {
-      const { x, y } = request.query;
-      const { documents } = await getLocalInfoWithGeo({ x, y });
-      return documents.map((document) => ({
-        address: null,
-        road_address: null,
-        address_name: document.address_name,
-        x: String(document.x),
-        y: String(document.y),
-      }));
-    }
   }
 
   static async validateUserName(request: CustomRequest<{ name: string }>) {

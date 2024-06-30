@@ -8,7 +8,6 @@ import walk from "./routes/walkRoute";
 
 import { verifyToken } from "./controllers/token";
 import chat from "./routes/chatRoom";
-import Region from "./controllers/region";
 import imageRoute from "./routes/ImageRoute";
 import resumse from "./routes/resumeRoute";
 import report from "./routes/reportRoute";

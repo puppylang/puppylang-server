@@ -1,7 +1,6 @@
 import Elysia from "elysia";
 import User from "../controllers/user";
 import { verifyToken } from "../controllers/token";
-import Region from "../controllers/region";
 
 const user = new Elysia({ prefix: "/user" })
   .post("/login-kakao", User.getKakaoUser)
