@@ -22,12 +22,14 @@ model Post {
   preferred_walk_location String                @db.VarChar(50)
   matched_user_id         String?
   is_matched              Boolean               @default(false)
+  region_id               Int
   cautions                Caution[]
   chat                    Chat[]
   like                    Like[]
   pet_sitter_walk_record  PetSitterWalkRecord[]
   author                  User                  @relation(fields: [author_id], references: [id], onDelete: Cascade)
   pet                     Pet                   @relation(fields: [pet_id], references: [id], onDelete: Cascade)
+  region                  Region                @relation(fields: [region_id], references: [id], onDelete: Cascade)
   postView                PostView[]
   resume                  Resume[]
 }
@@ -75,6 +77,7 @@ model Region {
   user_id        String
   created_at     DateTime       @default(now())
   actived_region ActivedRegion?
+  posts          Post[]
   user           User           @relation(fields: [user_id], references: [id], onDelete: Cascade)
 }
 
