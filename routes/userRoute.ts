@@ -21,6 +21,7 @@ const user = new Elysia({ prefix: "/user" })
 
   .get("/posts", User.getUserPosts)
   .get("/liked-posts", User.getUserLikedPosts)
+  .get("/submitted-posts", User.getUserSubmittedPosts)
 
   .get("/record-walks/count", User.getUserRecordWalksCount)
   .get("/record-walks/distance", User.getUserRecordWalksDistance)
