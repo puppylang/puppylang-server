@@ -365,7 +365,7 @@ class User {
       const token = request.headers.authorization;
       if (!token) {
         return CustomError({
-          message: "게시글은 로그인 후 확인 가능합니다.",
+          message: "내 게시글은 로그인 후 확인 가능합니다.",
           status: 401,
         });
       }
@@ -406,7 +406,7 @@ class User {
       const token = request.headers.authorization;
       if (!token) {
         return CustomError({
-          message: "게시글은 로그인 후 확인 가능합니다.",
+          message: "좋아요 목록은 로그인 후 확인 가능합니다.",
           status: 401,
         });
       }
@@ -451,6 +451,72 @@ class User {
           content: likedPosts.map(({ post }) => post),
         })
       );
+    } catch (err) {
+      console.log(err);
+      return CustomError({ message: "error ", status: 500 });
+    }
+  }
+
+  static async getUserSubmittedPosts(
+    request: CustomRequest<PageQuery & PostQuery>
+  ) {
+    try {
+      if (!request.query) return;
+
+      const token = request.headers.authorization;
+      if (!token) {
+        return CustomError({
+          message: "산책 신청목록은 로그인 후 확인 가능합니다.",
+          status: 401,
+        });
+      }
+
+      const user = await User.getUserInfo(token);
+      if (!user) {
+        return CustomError({
+          message: "가입되어 있지 않은 사용자입니다.",
+          status: 401,
+        });
+      }
+
+      const page = Number(request.query.page);
+      const size = Number(request.query.size);
+      const usePagination =
+        request.query.page !== undefined && request.query.size !== undefined;
+      const userId = user.id;
+
+      const currentSubmittedPots = await prisma.post.findMany({
+        ...(usePagination && { skip: page * size }),
+        ...(usePagination && { take: size }),
+        where: {
+          author: {
+            blocked_user: { none: { blocker_id: { equals: userId } } },
+          },
+          resume: { some: { user_id: userId } },
+        },
+        include: { pet: true, author: { include: { blocked_user: true } } },
+      });
+
+      const totalSubmittedPots = await prisma.post.count({
+        where: {
+          author: {
+            blocked_user: { none: { blocker_id: { equals: userId } } },
+          },
+          resume: { some: { user_id: userId } },
+        },
+      });
+
+      const totalPage = Math.ceil(totalSubmittedPots / size);
+      const isLastPage = (page + 1) * size >= totalPage;
+
+      return {
+        total_pages: totalPage,
+        page: usePagination ? page : null,
+        size: usePagination ? size : null,
+        first: usePagination ? page === 0 : true,
+        last: usePagination ? isLastPage : true,
+        content: currentSubmittedPots,
+      };
     } catch (err) {
       console.log(err);
       return CustomError({ message: "error ", status: 500 });
