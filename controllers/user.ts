@@ -430,11 +430,7 @@ class User {
           ...(usePagination && { skip: page * size }),
           ...(usePagination && { take: size }),
           include: {
-            post: {
-              include: {
-                pet: true,
-              },
-            },
+            post: { include: { pet: true } },
           },
           where: { ...(authorId && { author_id: authorId }) },
         }),
