@@ -23,8 +23,8 @@ interface PaginatedPostProps {
   statusQuery?: undefined | StatusType;
   authorId?: string;
   userId?: string;
-  regionId: number;
-  useRegion: boolean;
+  regionName?: string | undefined;
+  useRegion?: boolean;
 }
 
 class Post {
@@ -153,15 +153,15 @@ class Post {
       const size = Number(request.query.size);
       const usePagination =
         request.query.page !== undefined && request.query.size !== undefined;
-      const regionId = Number(request.query.region_id);
-      const useRegion = request.query.region_id !== undefined;
+      const regionName = request.query.region;
+      const useRegion = request.query.region !== undefined;
 
       return Post.fetchPaginatedPosts({
         page,
         size,
         usePagination,
         userId: user.id,
-        regionId,
+        regionName,
         useRegion,
       });
     } catch (err) {
@@ -448,10 +448,10 @@ class Post {
     statusQuery,
     authorId,
     userId,
-    regionId,
+    regionName,
     useRegion,
   }: PaginatedPostProps) {
-    const posts = await prisma.post.findMany({
+    const currentPosts = await prisma.post.findMany({
       ...(usePagination && { skip: page * size }),
       ...(usePagination && { take: size }),
       orderBy: [{ created_at: "desc" }],
@@ -464,14 +464,21 @@ class Post {
         author: { blocked_user: { none: { blocker_id: { equals: userId } } } },
         ...(statusQuery && { status: statusQuery }),
         ...(authorId && { author_id: authorId }),
-        ...(useRegion && { region_id: regionId }),
+        ...(useRegion && { region: { region: regionName } }),
       },
     });
-    const totalPage = await prisma.post.count({
-      ...(statusQuery && { where: { status: statusQuery } }),
+
+    const totalPosts = await prisma.post.count({
+      where: {
+        author: { blocked_user: { none: { blocker_id: { equals: userId } } } },
+        ...(statusQuery && { status: statusQuery }),
+        ...(authorId && { author_id: authorId }),
+        ...(useRegion && { region: { region: regionName } }),
+      },
     });
 
-    const currentPostCount = posts.length;
+    const totalPage = Math.ceil(totalPosts / size);
+    const isLastPage = (page + 1) * size >= totalPage;
 
     return new Response(
       JSON.stringify({
@@ -479,10 +486,8 @@ class Post {
         page: usePagination ? page : null,
         size: usePagination ? size : null,
         first: usePagination ? page === 0 : true,
-        last: usePagination
-          ? !(totalPage - (page * size + currentPostCount) > 0)
-          : true,
-        content: posts,
+        last: usePagination ? isLastPage : true,
+        content: currentPosts,
       })
     );
   }
