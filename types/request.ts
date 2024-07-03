@@ -22,7 +22,7 @@ export interface PageQuery {
 export interface Params {
   id?: number;
   user_id?: string;
-  region_id?: number;
+  region?: string;
 }
 
 export interface CustomErrorType {
