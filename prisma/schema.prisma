@@ -121,6 +121,7 @@ model Token {
   id                  Int    @id @default(autoincrement())
   user_id             String @unique
   refresh_token       String @unique
+  access_token        String @unique
   social_access_token String @unique
   user                User   @relation(fields: [user_id], references: [id], onDelete: Cascade)
 }
