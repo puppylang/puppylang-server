@@ -18,12 +18,11 @@ import {
   removeSocialAccessToken,
 } from "../services/userService";
 import type { CustomRequest, PageQuery, Params } from "../types/request";
-import { createToken } from "../utils/jwt";
-import { getLocalInfo, getLocalInfoWithGeo } from "../services/kakaoRegion";
-import type { UserRegionReqType } from "../types/region";
 import type { PostQuery } from "../types/postType";
-import Post from "./post";
 import { CustomError } from "../utils/CustomError";
+import { createToken, saveRefreshToken } from "../services/tokenService";
+
+import Post from "./post";
 
 const prisma = new PrismaClient({});
 
@@ -36,7 +35,7 @@ class User {
     }
 
     const { code, token } = request.body;
-    const refreshToken = await getAppleUserInfo(code);
+    const appleAccessToken = await getAppleUserInfo(code);
 
     const { sub: id } = jwt.decode(token) as { sub: string };
     const user = await User.readUserInfo(id, id.slice(0, 10), LoggedFrom.APPLE);
@@ -45,11 +44,12 @@ class User {
     const jwtAccessToken = createToken(user.id);
     const jwtRefreshToken = createToken(user.id, "refresh");
 
-    await User.saveRefreshToken(
-      jwtRefreshToken,
-      user.id,
-      refreshToken as string
-    );
+    await saveRefreshToken({
+      refresh_token: jwtRefreshToken,
+      user_id: user.id,
+      social_access_token: appleAccessToken,
+      access_token: jwtAccessToken,
+    });
 
     const response = new Response(
       JSON.stringify({
@@ -98,7 +98,12 @@ class User {
       const jwtAccessToken = createToken(user.id);
       const jwtRefreshToken = createToken(user.id, "refresh");
 
-      await User.saveRefreshToken(jwtRefreshToken, user.id, kakaoAccessToken);
+      await saveRefreshToken({
+        refresh_token: jwtRefreshToken,
+        user_id: user.id,
+        social_access_token: kakaoAccessToken,
+        access_token: jwtAccessToken,
+      });
 
       const response = new Response(
         JSON.stringify({
@@ -110,30 +115,6 @@ class User {
       return response;
     } catch (err) {
       console.log("error!!!", err);
-    }
-  }
-
-  static async saveRefreshToken(
-    refreshToken: string,
-    userId: string,
-    socialAccessToken: string
-  ) {
-    try {
-      await prisma.token.upsert({
-        where: {
-          user_id: userId,
-        },
-        update: {
-          refresh_token: refreshToken,
-        },
-        create: {
-          user_id: userId,
-          refresh_token: refreshToken,
-          social_access_token: socialAccessToken,
-        },
-      });
-    } catch (err) {
-      console.log(err);
     }
   }
 
@@ -185,7 +166,12 @@ class User {
       const jwtAccessToken = createToken(user.id);
       const jwtRefreshToken = createToken(user.id, "refresh");
 
-      await User.saveRefreshToken(jwtRefreshToken, user.id, naverAccessToken);
+      await saveRefreshToken({
+        refresh_token: jwtRefreshToken,
+        user_id: user.id,
+        social_access_token: naverAccessToken,
+        access_token: jwtAccessToken,
+      });
 
       const response = new Response(
         JSON.stringify({
@@ -289,13 +275,11 @@ class User {
 
   static async getUserInfo(token: string) {
     const splicedToken = token.startsWith("Bearer ") ? token.slice(7) : token;
-    const verifyToken = jwt.verify(
-      splicedToken,
-      process.env.JWT_SECRET_KEY as string
-    ) as jwt.JwtPayload;
-    if (!verifyToken) return;
+    const verifiedToken = jwt.decode(splicedToken) as jwt.JwtPayload;
 
-    const { id } = verifyToken;
+    if (!verifiedToken) return;
+
+    const { id } = verifiedToken;
     const user = await prisma.user.findUnique({
       where: {
         id,
@@ -306,29 +290,6 @@ class User {
     });
 
     return user;
-  }
-
-  static async getRegion(request: CustomRequest<UserRegionReqType>) {
-    if (!request.query) return;
-    if (request.query.text) {
-      const text = request.query.text || "";
-      const data = await getLocalInfo(text);
-      if (!data) return;
-      const { documents } = data;
-      return documents;
-    }
-
-    if (request.query.x && request.query.y) {
-      const { x, y } = request.query;
-      const { documents } = await getLocalInfoWithGeo({ x, y });
-      return documents.map((document) => ({
-        address: null,
-        road_address: null,
-        address_name: document.address_name,
-        x: String(document.x),
-        y: String(document.y),
-      }));
-    }
   }
 
   static async validateUserName(request: CustomRequest<{ name: string }>) {
@@ -388,7 +349,7 @@ class User {
       const token = request.headers.authorization;
       if (!token) {
         return CustomError({
-          message: "게시글은 로그인 후 확인 가능합니다.",
+          message: "내 게시글은 로그인 후 확인 가능합니다.",
           status: 401,
         });
       }
@@ -429,7 +390,7 @@ class User {
       const token = request.headers.authorization;
       if (!token) {
         return CustomError({
-          message: "게시글은 로그인 후 확인 가능합니다.",
+          message: "좋아요 목록은 로그인 후 확인 가능합니다.",
           status: 401,
         });
       }
@@ -453,11 +414,7 @@ class User {
           ...(usePagination && { skip: page * size }),
           ...(usePagination && { take: size }),
           include: {
-            post: {
-              include: {
-                pet: true,
-              },
-            },
+            post: { include: { pet: true } },
           },
           where: { ...(authorId && { author_id: authorId }) },
         }),
@@ -478,6 +435,72 @@ class User {
           content: likedPosts.map(({ post }) => post),
         })
       );
+    } catch (err) {
+      console.log(err);
+      return CustomError({ message: "error ", status: 500 });
+    }
+  }
+
+  static async getUserSubmittedPosts(
+    request: CustomRequest<PageQuery & PostQuery>
+  ) {
+    try {
+      if (!request.query) return;
+
+      const token = request.headers.authorization;
+      if (!token) {
+        return CustomError({
+          message: "산책 신청목록은 로그인 후 확인 가능합니다.",
+          status: 401,
+        });
+      }
+
+      const user = await User.getUserInfo(token);
+      if (!user) {
+        return CustomError({
+          message: "가입되어 있지 않은 사용자입니다.",
+          status: 401,
+        });
+      }
+
+      const page = Number(request.query.page);
+      const size = Number(request.query.size);
+      const usePagination =
+        request.query.page !== undefined && request.query.size !== undefined;
+      const userId = user.id;
+
+      const currentSubmittedPots = await prisma.post.findMany({
+        ...(usePagination && { skip: page * size }),
+        ...(usePagination && { take: size }),
+        where: {
+          author: {
+            blocked_user: { none: { blocker_id: { equals: userId } } },
+          },
+          resume: { some: { user_id: userId } },
+        },
+        include: { pet: true, author: { include: { blocked_user: true } } },
+      });
+
+      const totalSubmittedPots = await prisma.post.count({
+        where: {
+          author: {
+            blocked_user: { none: { blocker_id: { equals: userId } } },
+          },
+          resume: { some: { user_id: userId } },
+        },
+      });
+
+      const totalPage = Math.ceil(totalSubmittedPots / size);
+      const isLastPage = (page + 1) * size >= totalPage;
+
+      return {
+        total_pages: totalPage,
+        page: usePagination ? page : null,
+        size: usePagination ? size : null,
+        first: usePagination ? page === 0 : true,
+        last: usePagination ? isLastPage : true,
+        content: currentSubmittedPots,
+      };
     } catch (err) {
       console.log(err);
       return CustomError({ message: "error ", status: 500 });

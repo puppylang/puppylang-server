@@ -119,29 +119,25 @@ export const createSignWithAppleSecret = () => {
 };
 
 export const getAppleUserInfo = async (code: string) => {
-  try {
-    const bodyData = new URLSearchParams({
-      grant_type: "authorization_code",
-      code,
-      client_secret: createSignWithAppleSecret(),
-      client_id: process.env.APPLE_CLIENT_ID as string,
-      redirect_uri: process.env.APPLE_REDIRECT_URI as string,
-    }).toString();
+  const bodyData = new URLSearchParams({
+    grant_type: "authorization_code",
+    code,
+    client_secret: createSignWithAppleSecret(),
+    client_id: process.env.APPLE_CLIENT_ID as string,
+    redirect_uri: process.env.APPLE_REDIRECT_URI as string,
+  }).toString();
 
-    const response = await fetch("https://appleid.apple.com/auth/token", {
-      method: "POST",
-      body: bodyData,
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-    });
+  const response = await fetch("https://appleid.apple.com/auth/token", {
+    method: "POST",
+    body: bodyData,
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+  });
 
-    const { refresh_token } = (await response.json()) as AppleUserInfo;
+  const { refresh_token } = (await response.json()) as AppleUserInfo;
 
-    return refresh_token;
-  } catch (err) {
-    console.error(err);
-  }
+  return refresh_token;
 };
 
 export const deleteAppleUser = async (token: string) => {

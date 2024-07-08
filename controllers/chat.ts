@@ -363,12 +363,10 @@ class Chat {
 
   static async getNotReadedMessage(
     request: CustomRequest<{
-      token: {
-        value: string;
-      };
+      token: string;
     }>
   ) {
-    if (!request.headers.authorization) {
+    if (!request.query || !request.query.token) {
       CustomError({
         message: "token이 존재하지 않습니다.",
         status: 400,
@@ -377,42 +375,42 @@ class Chat {
       return;
     }
 
-    const token = request.headers.authorization;
+    const { token } = request.query;
     if (!token) return;
     const user = await User.getUserInfo(token);
     if (!user) return;
 
     const stream = new Stream();
 
-    const chatting = await prisma.chat.findMany({
-      include: {
-        message: true,
-      },
-      where: {
-        OR: [
-          {
-            author_id: user.id,
-          },
-          {
-            guest_id: user.id,
-          },
-        ],
-      },
-    });
+    setInterval(async () => {
+      const chatting = await prisma.chat.findMany({
+        include: {
+          message: true,
+        },
+        where: {
+          OR: [
+            {
+              author_id: user.id,
+            },
+            {
+              guest_id: user.id,
+            },
+          ],
+        },
+      });
 
-    if (chatting.length) return;
+      const notReadedChatting = chatting.find((chat) => {
+        const notReadedMessage = chat.message.filter(
+          (item) => item.user_id !== user.id && !item.is_read
+        );
 
-    const notReadedChatting = chatting.find((chat) => {
-      const notReadedMessage = chat.message.filter(
-        (item) => item.user_id !== user.id && !item.is_read
+        return Boolean(notReadedMessage.length);
+      });
+
+      stream.send(
+        JSON.stringify({ hasNotReadedMessage: Boolean(notReadedChatting) })
       );
-
-      return Boolean(notReadedMessage.length);
-    });
-
-    if (!notReadedChatting) return;
-
-    stream.send("Exist notReadedMessage");
+    }, 5000);
 
     return stream;
   }

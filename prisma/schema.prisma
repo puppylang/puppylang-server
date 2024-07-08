@@ -22,12 +22,14 @@ model Post {
   preferred_walk_location String                @db.VarChar(50)
   matched_user_id         String?
   is_matched              Boolean               @default(false)
+  region_id               Int
   cautions                Caution[]
   chat                    Chat[]
   like                    Like[]
   pet_sitter_walk_record  PetSitterWalkRecord[]
   author                  User                  @relation(fields: [author_id], references: [id], onDelete: Cascade)
   pet                     Pet                   @relation(fields: [pet_id], references: [id], onDelete: Cascade)
+  region                  Region                @relation(fields: [region_id], references: [id], onDelete: Cascade)
   postView                PostView[]
   resume                  Resume[]
 }
@@ -50,8 +52,7 @@ model User {
   birthday                String?
   character               String?
   gender                  Gender?
-  region                  String[]              @default([])
-  actived_region          String?
+  actived_region          ActivedRegion?
   blocked_user            BlockedUser[]         @relation("BlockedUser")
   blocker                 BlockedUser[]         @relation("Blocker")
   author_chat             Chat[]                @relation("AuthorChat")
@@ -63,10 +64,29 @@ model User {
   pet_walk_records        PetWalkRecord[]
   post                    Post[]
   PostView                PostView[]
+  region                  Region[]
   reported_user           ReportedUser[]        @relation("ReportedUser")
   reporter                ReportedUser[]        @relation("Reporter")
   resume                  Resume[]
   token                   Token?
+}
+
+model Region {
+  id             Int            @id @default(autoincrement())
+  region         String
+  user_id        String
+  created_at     DateTime       @default(now())
+  actived_region ActivedRegion?
+  posts          Post[]
+  user           User           @relation(fields: [user_id], references: [id], onDelete: Cascade)
+}
+
+model ActivedRegion {
+  region_id  Int      @unique
+  user_id    String   @unique
+  created_at DateTime @default(now())
+  region     Region   @relation(fields: [region_id], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
 }
 
 model Caution {
@@ -101,6 +121,7 @@ model Token {
   id                  Int    @id @default(autoincrement())
   user_id             String @unique
   refresh_token       String @unique
+  access_token        String @unique
   social_access_token String @unique
   user                User   @relation(fields: [user_id], references: [id], onDelete: Cascade)
 }
