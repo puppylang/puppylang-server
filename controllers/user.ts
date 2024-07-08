@@ -18,12 +18,11 @@ import {
   removeSocialAccessToken,
 } from "../services/userService";
 import type { CustomRequest, PageQuery, Params } from "../types/request";
-import { createToken } from "../utils/jwt";
-import { getLocalInfo, getLocalInfoWithGeo } from "../services/regionService";
-import type { UserRegionReqType } from "../types/region";
 import type { PostQuery } from "../types/postType";
-import Post from "./post";
 import { CustomError } from "../utils/CustomError";
+import { createToken, saveRefreshToken } from "../services/tokenService";
+
+import Post from "./post";
 
 const prisma = new PrismaClient({});
 
@@ -36,7 +35,7 @@ class User {
     }
 
     const { code, token } = request.body;
-    const refreshToken = await getAppleUserInfo(code);
+    const appleAccessToken = await getAppleUserInfo(code);
 
     const { sub: id } = jwt.decode(token) as { sub: string };
     const user = await User.readUserInfo(id, id.slice(0, 10), LoggedFrom.APPLE);
@@ -45,11 +44,12 @@ class User {
     const jwtAccessToken = createToken(user.id);
     const jwtRefreshToken = createToken(user.id, "refresh");
 
-    await User.saveRefreshToken(
-      jwtRefreshToken,
-      user.id,
-      refreshToken as string
-    );
+    await saveRefreshToken({
+      refresh_token: jwtRefreshToken,
+      user_id: user.id,
+      social_access_token: appleAccessToken,
+      access_token: jwtAccessToken,
+    });
 
     const response = new Response(
       JSON.stringify({
@@ -98,7 +98,12 @@ class User {
       const jwtAccessToken = createToken(user.id);
       const jwtRefreshToken = createToken(user.id, "refresh");
 
-      await User.saveRefreshToken(jwtRefreshToken, user.id, kakaoAccessToken);
+      await saveRefreshToken({
+        refresh_token: jwtRefreshToken,
+        user_id: user.id,
+        social_access_token: kakaoAccessToken,
+        access_token: jwtAccessToken,
+      });
 
       const response = new Response(
         JSON.stringify({
@@ -110,30 +115,6 @@ class User {
       return response;
     } catch (err) {
       console.log("error!!!", err);
-    }
-  }
-
-  static async saveRefreshToken(
-    refreshToken: string,
-    userId: string,
-    socialAccessToken: string
-  ) {
-    try {
-      await prisma.token.upsert({
-        where: {
-          user_id: userId,
-        },
-        update: {
-          refresh_token: refreshToken,
-        },
-        create: {
-          user_id: userId,
-          refresh_token: refreshToken,
-          social_access_token: socialAccessToken,
-        },
-      });
-    } catch (err) {
-      console.log(err);
     }
   }
 
@@ -185,7 +166,12 @@ class User {
       const jwtAccessToken = createToken(user.id);
       const jwtRefreshToken = createToken(user.id, "refresh");
 
-      await User.saveRefreshToken(jwtRefreshToken, user.id, naverAccessToken);
+      await saveRefreshToken({
+        refresh_token: jwtRefreshToken,
+        user_id: user.id,
+        social_access_token: naverAccessToken,
+        access_token: jwtAccessToken,
+      });
 
       const response = new Response(
         JSON.stringify({
@@ -289,13 +275,11 @@ class User {
 
   static async getUserInfo(token: string) {
     const splicedToken = token.startsWith("Bearer ") ? token.slice(7) : token;
-    const verifyToken = jwt.verify(
-      splicedToken,
-      process.env.JWT_SECRET_KEY as string
-    ) as jwt.JwtPayload;
-    if (!verifyToken) return;
+    const verifiedToken = jwt.decode(splicedToken) as jwt.JwtPayload;
 
-    const { id } = verifyToken;
+    if (!verifiedToken) return;
+
+    const { id } = verifiedToken;
     const user = await prisma.user.findUnique({
       where: {
         id,
