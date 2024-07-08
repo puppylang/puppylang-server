@@ -1,17 +1,17 @@
 import Elysia from "elysia";
 import cors from "@elysiajs/cors";
 
+import { verifyToken } from "./services/tokenService";
 import user from "./routes/userRoute";
 import post from "./routes/postRoute";
 import pet from "./routes/petRoute";
 import walk from "./routes/walkRoute";
-
-import { verifyToken } from "./controllers/token";
 import chat from "./routes/chatRoom";
-import imageRoute from "./routes/ImageRoute";
+import image from "./routes/ImageRoute";
 import resumse from "./routes/resumeRoute";
 import report from "./routes/reportRoute";
-import regionRoute from "./routes/regionRoute";
+import region from "./routes/regionRoute";
+import login from "./routes/loginRoute";
 
 new Elysia()
   .use(
@@ -25,23 +25,17 @@ new Elysia()
       ],
     })
   )
-  .use(regionRoute)
-  .use(resumse)
-  .use(imageRoute)
+  .use(login)
+  .onBeforeHandle(async (context) => {
+    await verifyToken(context);
+  })
   .use(user)
+  .use(region)
+  .use(resumse)
+  .use(image)
   .use(chat)
   .use(report)
-  .guard(
-    {
-      beforeHandle(context) {
-        verifyToken(context);
-      },
-    },
-    (app) => app.use(pet)
-  )
+  .use(pet)
   .use(walk)
   .use(post)
-  .get("/", async () => {
-    return new Response("Good");
-  })
   .listen(8000);

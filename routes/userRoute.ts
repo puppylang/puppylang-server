@@ -1,19 +1,8 @@
 import Elysia from "elysia";
 import User from "../controllers/user";
-import { verifyToken } from "../controllers/token";
 
 const user = new Elysia({ prefix: "/user" })
-  .post("/login-kakao", User.getKakaoUser)
-  .post("/login-naver", User.getNaverUser)
-  .post("/login-apple", User.getAppleUser)
-  .guard(
-    {
-      beforeHandle(context) {
-        verifyToken(context);
-      },
-    },
-    (app) => app.get("", User.getUser)
-  )
+  .get("", User.getUser)
   .patch("", User.updateUser)
   .get("/name", User.validateUserName)
   .post("/logout", User.logoutUser)
