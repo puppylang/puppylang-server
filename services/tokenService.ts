@@ -14,7 +14,7 @@ export const createToken = (id: string, type?: "access" | "refresh") => {
     process.env.JWT_SECRET_KEY as string,
     {
       algorithm: "HS256",
-      expiresIn: type === "refresh" ? "7d" : 10,
+      expiresIn: type === "refresh" ? "7d" : 5,
     }
   );
 
@@ -39,22 +39,41 @@ export async function verifyToken({ headers, set }: CustomContextType) {
 
       if (error && error.name === "TokenExpiredError" && tokenInfo) {
         const userId = tokenInfo.id;
-        const hasRefreshToken = await prisma.token.findUnique({
+        const userToken = await prisma.token.findUnique({
           where: {
             user_id: userId,
           },
         });
-        if (!hasRefreshToken || hasRefreshToken.access_token !== slicedToken) {
-          console.log("저기!1");
 
+        if (!userToken) {
           set.status = 401;
           return;
         }
-        console.log("여기1");
+
+        const { refresh_token: refreshToken } = userToken;
+
+        await jwt.verify(
+          refreshToken,
+          process.env.JWT_SECRET_KEY as string,
+          (refreshTokenError) => {
+            if (refreshTokenError) {
+              set.status = 401;
+              return;
+            }
+          }
+        );
+
+        if (!userToken) {
+          set.status = 401;
+          return;
+        }
 
         const newAccessToken = createToken(userId);
-        set.headers["Access-Control-Expose-Headers"] = "Authorization";
-        set.headers["Authorization"] = `accessToken=${newAccessToken}`;
+        set.headers["Set-Cookie"] =
+          process.env.NODE_ENV === "development"
+            ? `token=${newAccessToken};path=/;`
+            : `token=${newAccessToken};path=/; SameSite=None; Secure;`;
+        await saveRefreshToken({ ...userToken, access_token: newAccessToken });
       }
     }
   );
