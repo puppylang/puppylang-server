@@ -156,12 +156,17 @@ class Post {
       const regionName = request.query.region;
       const useRegion = request.query.region !== undefined;
 
+      const splittedRegionName = regionName?.split(" ");
+      const filteredRegionName = splittedRegionName?.filter(
+        (_, index) => index !== splittedRegionName.length - 1
+      );
+
       return Post.fetchPaginatedPosts({
         page,
         size,
         usePagination,
         userId: user.id,
-        regionName,
+        regionName: filteredRegionName?.join(" "),
         useRegion,
       });
     } catch (err) {
@@ -464,7 +469,13 @@ class Post {
         author: { blocked_user: { none: { blocker_id: { equals: userId } } } },
         ...(statusQuery && { status: statusQuery }),
         ...(authorId && { author_id: authorId }),
-        ...(useRegion && { region: { region: regionName } }),
+        ...(useRegion && {
+          region: {
+            region: {
+              contains: regionName,
+            },
+          },
+        }),
       },
     });
 
