@@ -1,5 +1,5 @@
 import { PrismaClient } from "@prisma/client";
-import { getLocalInfo, getLocalInfoWithGeo } from "../services/kakaoRegion";
+import { getLocalInfo, getLocalInfoWithGeo } from "../services/regionService";
 import type { UserRegionReqType } from "../types/region";
 import type { CustomRequest } from "../types/request";
 import User from "./user";
@@ -13,21 +13,19 @@ class Region {
     if (request.query.text) {
       const text = request.query.text || "";
       const data = await getLocalInfo(text);
-      if (!data) return;
-      const { documents } = data;
-      return documents;
+      return {
+        status: data ? data.response.status : "NOT_FOUND",
+        regions: data?.response.result?.items || [],
+      };
     }
 
     if (request.query.x && request.query.y) {
       const { x, y } = request.query;
-      const { documents } = await getLocalInfoWithGeo({ x, y });
-      return documents.map((document) => ({
-        address: null,
-        road_address: null,
-        address_name: document.address_name,
-        x: String(document.x),
-        y: String(document.y),
-      }));
+      const data = await getLocalInfoWithGeo({ x, y });
+      return {
+        stauts: data.response.status,
+        regions: data.response.result?.items || [],
+      };
     }
   }
 
@@ -37,7 +35,13 @@ class Region {
     const user = await User.getUserInfo(token);
     if (!user) return;
 
-    if (user.region.length >= 2) {
+    const regions = await prisma.region.count({
+      where: {
+        user_id: user.id,
+      },
+    });
+
+    if (regions >= 2) {
       return CustomError({
         message: "최대 2개의 지역을 등록할 수 있습니다.",
         status: 400,
@@ -46,41 +50,36 @@ class Region {
 
     const { region } = request.body;
 
-    const newRegion = await prisma.user.update({
+    const newRegion = await prisma.region.create({
+      data: { region, user_id: user.id },
+    });
+    await prisma.activedRegion.upsert({
       where: {
-        id: user.id,
+        user_id: user.id,
       },
-      data: {
-        region: {
-          push: region,
-        },
+      update: {
+        region_id: newRegion.id,
+      },
+      create: {
+        user_id: user.id,
+        region_id: newRegion.id,
       },
     });
 
-    if (newRegion) {
-      request.set.status = 201;
-    }
+    return newRegion;
   }
 
-  static async deleteRegion(request: CustomRequest<{ region: string }>) {
+  static async deleteRegion(request: CustomRequest<{ id: string }>) {
     const token = request.headers.authorization;
     if (!token) return;
     const user = await User.getUserInfo(token);
     if (!user) return;
 
-    const { region } = request.body;
-    const filteredUserRegions = [...user.region].filter(
-      (userRegion) => userRegion !== region
-    );
+    const { id: regionId } = request.body;
 
-    const deletedUserRegion = await prisma.user.update({
+    const deletedUserRegion = await prisma.region.delete({
       where: {
-        id: user.id,
-      },
-      data: {
-        region: filteredUserRegions,
-        actived_region:
-          region === user.actived_region ? null : user.actived_region,
+        id: Number(regionId),
       },
     });
 
@@ -90,7 +89,7 @@ class Region {
   }
 
   static async updateUserActivedRegion(
-    request: CustomRequest<{ region: string }>
+    request: CustomRequest<{ region_id: string }>
   ) {
     const token = request.headers.authorization;
     if (!token) {
@@ -108,27 +107,65 @@ class Region {
       });
     }
 
-    if (!request.body || !request.body.region) {
+    if (!request.body || !request.body.region_id) {
       return CustomError({
         message: "데이터가 존재하지 않습니다.",
         status: 401,
       });
     }
 
-    const { region } = request.body;
+    const { region_id } = request.body;
+    const numberRegionId = Number(region_id);
 
-    const updatedUser = await prisma.user.update({
+    try {
+      const updatedAtiveRegion = await prisma.activedRegion.upsert({
+        where: {
+          user_id: user.id,
+        },
+        update: {
+          region_id: numberRegionId,
+          user_id: user.id,
+        },
+        create: {
+          region_id: numberRegionId,
+          user_id: user.id,
+        },
+      });
+
+      return updatedAtiveRegion;
+    } catch (err) {
+      console.log(err);
+    }
+  }
+
+  static async getActivedRegion(request: CustomRequest<string>) {
+    const token = request.headers.authorization;
+    if (!token) return;
+    const user = await User.getUserInfo(token);
+    if (!user) return;
+
+    const activedRegion = await prisma.activedRegion.findUnique({
       where: {
-        id: user.id,
-      },
-      data: {
-        actived_region: region,
+        user_id: user.id,
       },
     });
 
-    if (updatedUser && request.set) {
-      request.set.status = 201;
-    }
+    return activedRegion;
+  }
+
+  static async getRegion(request: CustomRequest<string>) {
+    const token = request.headers.authorization;
+    if (!token) return;
+    const user = await User.getUserInfo(token);
+    if (!user) return;
+
+    const regions = await prisma.region.findMany({
+      where: {
+        user_id: user.id,
+      },
+    });
+
+    return regions;
   }
 }
 

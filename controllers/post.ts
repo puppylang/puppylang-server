@@ -23,6 +23,8 @@ interface PaginatedPostProps {
   statusQuery?: undefined | StatusType;
   authorId?: string;
   userId?: string;
+  regionName?: string | undefined;
+  useRegion?: boolean;
 }
 
 class Post {
@@ -37,6 +39,7 @@ class Post {
         end_at,
         cautions,
         pet_id,
+        region_id,
       } = request.body;
 
       const token = request.headers.authorization;
@@ -85,11 +88,12 @@ class Post {
           preferred_walk_location,
           author_id: user?.id,
           pet_id,
+          region_id,
           cautions: {
             create: convertedCautions || [],
           },
         },
-        include: { cautions: true, author: true, pet: true },
+        include: { cautions: true, author: true, pet: true, region: true },
       });
 
       if (createdPost) {
@@ -103,6 +107,7 @@ class Post {
           status,
           author,
           cautions,
+          region_id,
         } = createdPost;
 
         return {
@@ -115,6 +120,7 @@ class Post {
           status,
           author,
           cautions,
+          region_id,
         };
       }
     } catch (err) {
@@ -123,7 +129,7 @@ class Post {
     }
   }
 
-  static async getPosts(request: CustomRequest<PageQuery>) {
+  static async getPosts(request: CustomRequest<PageQuery & Params>) {
     try {
       if (!request.query) return;
 
@@ -147,12 +153,21 @@ class Post {
       const size = Number(request.query.size);
       const usePagination =
         request.query.page !== undefined && request.query.size !== undefined;
+      const regionName = request.query.region;
+      const useRegion = request.query.region !== undefined;
+
+      const splittedRegionName = regionName?.split(" ");
+      const filteredRegionName = splittedRegionName?.filter(
+        (_, index) => index !== splittedRegionName.length - 1
+      );
 
       return Post.fetchPaginatedPosts({
         page,
         size,
         usePagination,
         userId: user.id,
+        regionName: filteredRegionName?.join(" "),
+        useRegion,
       });
     } catch (err) {
       console.log(err);
@@ -192,7 +207,7 @@ class Post {
 
       const post = await prisma.post.findUnique({
         where: { id: Number(post_id) },
-        include: { cautions: true, author: true, pet: true },
+        include: { cautions: true, author: true, pet: true, region: true },
       });
 
       if (!post) {
@@ -311,7 +326,7 @@ class Post {
           pet_id,
           matched_user_id,
         },
-        include: { cautions: true, author: true, pet: true },
+        include: { cautions: true, author: true, pet: true, region: true },
       });
 
       if (updatedPost) {
@@ -438,41 +453,43 @@ class Post {
     statusQuery,
     authorId,
     userId,
+    regionName,
+    useRegion,
   }: PaginatedPostProps) {
-    const [posts, totalPage] = await prisma.$transaction([
-      prisma.post.findMany({
-        ...(usePagination && { skip: page * size }),
-        ...(usePagination && { take: size }),
-        orderBy: [{ created_at: "desc" }],
-        include: {
-          cautions: true,
-          pet: true,
-          author: {
-            include: {
-              blocked_user: true,
+    const currentPosts = await prisma.post.findMany({
+      ...(usePagination && { skip: page * size }),
+      ...(usePagination && { take: size }),
+      orderBy: [{ created_at: "desc" }],
+      include: {
+        cautions: true,
+        pet: true,
+        author: { include: { blocked_user: true } },
+      },
+      where: {
+        author: { blocked_user: { none: { blocker_id: { equals: userId } } } },
+        ...(statusQuery && { status: statusQuery }),
+        ...(authorId && { author_id: authorId }),
+        ...(useRegion && {
+          region: {
+            region: {
+              contains: regionName,
             },
           },
-        },
-        where: {
-          author: {
-            blocked_user: {
-              none: {
-                blocker_id: {
-                  equals: userId,
-                },
-              },
-            },
-          },
-          ...(statusQuery && { status: statusQuery }),
-          ...(authorId && { author_id: authorId }),
-        },
-      }),
-      prisma.post.count({
-        ...(statusQuery && { where: { status: statusQuery } }),
-      }),
-    ]);
+        }),
+      },
+    });
 
-    const currentPostCount = posts.length;
+    const totalPosts = await prisma.post.count({
+      where: {
+        author: { blocked_user: { none: { blocker_id: { equals: userId } } } },
+        ...(statusQuery && { status: statusQuery }),
+        ...(authorId && { author_id: authorId }),
+        ...(useRegion && { region: { region: regionName } }),
+      },
+    });
+
+    const totalPage = Math.ceil(totalPosts / size);
+    const isLastPage = (page + 1) * size >= totalPage;
 
     return new Response(
       JSON.stringify({
@@ -480,10 +497,8 @@ class Post {
         page: usePagination ? page : null,
         size: usePagination ? size : null,
         first: usePagination ? page === 0 : true,
-        last: usePagination
-          ? !(totalPage - (page * size + currentPostCount) > 0)
-          : true,
-        content: posts,
+        last: usePagination ? isLastPage : true,
+        content: currentPosts,
       })
     );
   }
