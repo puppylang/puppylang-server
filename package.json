@@ -27,6 +27,7 @@
     "dev": "bun --watch index.ts",
     "build": "bun build index.ts --target bun",
     "start": "bun index.ts",
-    "test": "bun test"
+    "test": "bun test",
+    "postinstall": "npx prisma generate"
   }
 }
