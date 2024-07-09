@@ -3,11 +3,24 @@ import type { DongRegionType, KakaoLocalWithGeoType } from "../types/region";
 export const getLocalInfo = async (query: string) => {
   try {
     const DATA_URL = `https://api.vworld.kr/req/search?service=search&request=search&version=2.0&size=50&page=1&query=${query}&type=district&category=L4&format=json&errorformat=json&key=${process.env.DONG_REST_API_KEY}`;
-    const response = await fetch(DATA_URL);
-    console.log(response);
-    const data = (await response.json()) as DongRegionType;
-    console.log("data=", data);
-    return data;
+    const response = await fetch(DATA_URL, {
+      headers: {
+        "Content-type": "application/json;charset=UTF-8",
+      },
+    });
+
+    if (
+      response.headers.get("content-type") === "application/json;charset=UTF-8"
+    ) {
+      const data = await response.json();
+      console.log("JSON DATA=", data);
+      return data;
+    }
+
+    const data = await response.text();
+    console.log("text DATA=", data);
+    console.log("data");
+    return undefined;
   } catch (err) {
     console.error(err);
   }
