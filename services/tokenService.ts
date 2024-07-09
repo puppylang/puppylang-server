@@ -14,7 +14,7 @@ export const createToken = (id: string, type?: "access" | "refresh") => {
     process.env.JWT_SECRET_KEY as string,
     {
       algorithm: "HS256",
-      expiresIn: type === "refresh" ? "7d" : 5,
+      expiresIn: type === "refresh" ? "7d" : "1d",
     }
   );
 
@@ -69,6 +69,9 @@ export async function verifyToken({ headers, set }: CustomContextType) {
         }
 
         const newAccessToken = createToken(userId);
+
+        set.headers["Access-Control-Expose-Headers"] = "Authorization";
+        set.headers["Authorization"] = newAccessToken;
         set.headers["Set-Cookie"] =
           process.env.NODE_ENV === "development"
             ? `token=${newAccessToken};path=/;`
