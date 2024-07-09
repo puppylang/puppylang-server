@@ -25,6 +25,7 @@ export const getLocalInfoWithGeo = async ({
     headers: {
       Authorization: `KakaoAK ${process.env.KAKAO_REST_API_KEY}`,
     },
+    proxy: process.env.NOBLE_PROXY_URL,
   });
 
   const data = (await response.json()) as KakaoLocalWithGeoType;
