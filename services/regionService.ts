@@ -7,6 +7,7 @@ export const getLocalInfo = async (query: string) => {
       headers: {
         "Content-type": "application/json;charset=UTF-8",
       },
+      proxy: process.env.NOBLE_PROXY_URL,
     });
 
     if (
