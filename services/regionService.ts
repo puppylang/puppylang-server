@@ -4,7 +4,9 @@ export const getLocalInfo = async (query: string) => {
   try {
     const DATA_URL = `https://api.vworld.kr/req/search?service=search&request=search&version=2.0&size=50&page=1&query=${query}&type=district&category=L4&format=json&errorformat=json&key=${process.env.DONG_REST_API_KEY}`;
     const response = await fetch(DATA_URL);
+    console.log(response);
     const data = (await response.json()) as DongRegionType;
+    console.log("data=", data);
     return data;
   } catch (err) {
     console.error(err);
@@ -25,7 +27,6 @@ export const getLocalInfoWithGeo = async ({
     },
   });
 
-  console.log("kakao =>", process.env.KAKAO_REST_API_KEY, response);
   const data = (await response.json()) as KakaoLocalWithGeoType;
   const changedDongRegionType: DongRegionType = {
     response: {
