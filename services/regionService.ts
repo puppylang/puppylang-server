@@ -7,13 +7,16 @@ export const getLocalInfo = async (query: string) => {
       headers: {
         Authorization: `KakaoAK ${process.env.KAKAO_REST_API_KEY}`,
       },
+      proxy: process.env.NOBLE_PROXY_URL,
     });
     const data = (await response.json()) as KakaoLocalWithGeoType;
-    const dongRegionData = data.documents.filter(
-      (document) =>
-        document.address.region_3depth_h_name ||
-        document.address.region_3depth_name
-    );
+    const dongRegionData = data
+      ? data.documents.filter(
+          (document) =>
+            document.address.region_3depth_h_name ||
+            document.address.region_3depth_name
+        )
+      : [];
 
     return {
       status: dongRegionData.length ? "OK" : "NOT_FOUND",
@@ -48,6 +51,7 @@ export const getLocalInfoWithGeo = async ({
     headers: {
       Authorization: `KakaoAK ${process.env.KAKAO_REST_API_KEY}`,
     },
+    proxy: process.env.NOBLE_PROXY_URL,
   });
 
   const data = (await response.json()) as KakaoLocalWithGeoType;
