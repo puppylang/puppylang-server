@@ -1,29 +1,38 @@
-import type { DongRegionType, KakaoLocalWithGeoType } from "../types/region";
+import type { KakaoLocalWithGeoType } from "../types/region";
 
 export const getLocalInfo = async (query: string) => {
   try {
-    const DATA_URL = `https://api.vworld.kr/req/search?service=search&request=search&version=2.0&size=50&page=1&query=${query}&type=district&category=L4&format=json&errorformat=json&key=${process.env.DONG_REST_API_KEY}`;
+    const DATA_URL = `https://dapi.kakao.com/v2/local/search/address?query=${query}`;
     const response = await fetch(DATA_URL, {
       headers: {
-        "Content-type": "application/json;charset=UTF-8",
+        Authorization: `KakaoAK ${process.env.KAKAO_REST_API_KEY}`,
       },
-      proxy: process.env.NOBLE_PROXY_URL,
     });
+    const data = (await response.json()) as KakaoLocalWithGeoType;
+    const dongRegionData = data.documents.filter(
+      (document) =>
+        document.address.region_3depth_h_name ||
+        document.address.region_3depth_name
+    );
 
-    if (
-      response.headers.get("content-type") === "application/json;charset=UTF-8"
-    ) {
-      const data = await response.json();
-      console.log("JSON DATA=", data);
-      return data;
-    }
-
-    const data = await response.text();
-    console.log("text DATA=", data);
-    console.log("data");
-    return undefined;
+    return {
+      status: dongRegionData.length ? "OK" : "NOT_FOUND",
+      regions: dongRegionData.map((document) => ({
+        id: document.x + document.y,
+        title: document.address_name,
+        geometry: "KAKAO",
+        point: {
+          x: document.x,
+          y: document.y,
+        },
+      })),
+    };
   } catch (err) {
     console.error(err);
+    return {
+      status: "NOT_FOUND",
+      regions: [],
+    };
   }
 };
 
@@ -39,30 +48,22 @@ export const getLocalInfoWithGeo = async ({
     headers: {
       Authorization: `KakaoAK ${process.env.KAKAO_REST_API_KEY}`,
     },
-    proxy: process.env.NOBLE_PROXY_URL,
   });
 
   const data = (await response.json()) as KakaoLocalWithGeoType;
-  const changedDongRegionType: DongRegionType = {
-    response: {
-      status: "OK",
-      result: {
-        crs: "",
-        type: "",
-        items: data.documents.map(({ code, address_name, x, y }) => {
-          return {
-            id: code,
-            title: address_name,
-            geometry: "KAKAO",
-            point: {
-              x: String(x),
-              y: String(y),
-            },
-          };
-        }),
-      },
-    },
-  };
 
-  return changedDongRegionType;
+  return {
+    status: "OK",
+    regions: data.documents.map(({ code, address_name, x, y }) => {
+      return {
+        id: code,
+        title: address_name,
+        geometry: "KAKAO",
+        point: {
+          x,
+          y,
+        },
+      };
+    }),
+  };
 };
