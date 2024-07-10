@@ -14,8 +14,8 @@ class Region {
       const text = request.query.text || "";
       const data = await getLocalInfo(text);
       return {
-        status: data ? data.response.status : "NOT_FOUND",
-        regions: data?.response.result?.items || [],
+        status: data?.status,
+        regions: data?.regions || [],
       };
     }
 
@@ -23,8 +23,8 @@ class Region {
       const { x, y } = request.query;
       const data = await getLocalInfoWithGeo({ x, y });
       return {
-        stauts: data.response.status,
-        regions: data.response.result?.items || [],
+        stauts: data.status,
+        regions: data.regions || [],
       };
     }
   }
