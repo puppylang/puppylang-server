@@ -167,6 +167,15 @@ class Region {
 
     return regions;
   }
+
+  static async getUserActivedRegionName(user_id: string) {
+    const data = await prisma.activedRegion.findUnique({
+      where: { user_id },
+      include: { region: true },
+    });
+
+    return data ? data.region.region : null;
+  }
 }
 
 export default Region;

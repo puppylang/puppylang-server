@@ -13,6 +13,7 @@ import {
   type Params,
 } from "../types/request";
 import User from "./user";
+import Region from "./region";
 
 const prisma = new PrismaClient({});
 
@@ -153,21 +154,27 @@ class Post {
       const size = Number(request.query.size);
       const usePagination =
         request.query.page !== undefined && request.query.size !== undefined;
-      const regionName = request.query.region;
-      const useRegion = request.query.region !== undefined;
+      const region = request.query.region;
+      let regionName: null | string = "";
 
-      const splittedRegionName = regionName?.split(" ");
-      const filteredRegionName = splittedRegionName?.filter(
-        (_, index) => index !== splittedRegionName.length - 1
-      );
+      if (!region) {
+        const result = await Region.getUserActivedRegionName(user.id);
+        if (result === null) return;
+
+        regionName = result;
+      } else {
+        regionName = region;
+      }
+
+      const shortRegionName = regionName.split(" ").slice(0, -1).join(" "); // '경기도 수원시 권선구'
 
       return Post.fetchPaginatedPosts({
         page,
         size,
         usePagination,
         userId: user.id,
-        regionName: filteredRegionName?.join(" "),
-        useRegion,
+        regionName: shortRegionName,
+        useRegion: true,
       });
     } catch (err) {
       console.log(err);
@@ -461,43 +468,36 @@ class Post {
       ...(usePagination && { take: size }),
       orderBy: [{ created_at: "desc" }],
       include: {
-        cautions: true,
         pet: true,
-        author: { include: { blocked_user: true } },
+        region: true,
       },
       where: {
         author: { blocked_user: { none: { blocker_id: { equals: userId } } } },
         ...(statusQuery && { status: statusQuery }),
         ...(authorId && { author_id: authorId }),
-        ...(useRegion && {
-          region: {
-            region: {
-              contains: regionName,
-            },
-          },
-        }),
+        ...(useRegion && { region: { region: { contains: regionName } } }),
       },
     });
 
-    const totalPosts = await prisma.post.count({
+    const totalPostCount = await prisma.post.count({
       where: {
         author: { blocked_user: { none: { blocker_id: { equals: userId } } } },
         ...(statusQuery && { status: statusQuery }),
         ...(authorId && { author_id: authorId }),
-        ...(useRegion && { region: { region: regionName } }),
+        ...(useRegion && { region: { region: { contains: regionName } } }),
       },
     });
 
-    const totalPage = Math.ceil(totalPosts / size);
-    const isLastPage = (page + 1) * size >= totalPage;
+    const isLast = (page + 1) * size >= totalPostCount;
 
+    console.log({ isLast, totalPostCount });
     return new Response(
       JSON.stringify({
-        total_pages: totalPage,
+        total_pages: totalPostCount,
         page: usePagination ? page : null,
         size: usePagination ? size : null,
         first: usePagination ? page === 0 : true,
-        last: usePagination ? isLastPage : true,
+        last: usePagination ? isLast : true,
         content: currentPosts,
       })
     );
